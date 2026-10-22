@@ -1,0 +1,34 @@
+.account-auth { width: min(650px, 90%); min-height: 480px; margin: 55px auto 100px; display: grid; place-items: center; }
+.account-auth-card { width: min(500px, 100%); padding: clamp(28px, 6vw, 58px); border: 1px solid #d9ccbd; background: #eee5d8; }
+.account-auth-card h1 { margin: 13px 0 11px; font-family: var(--app-font-serif); font-size: clamp(34px, 5vw, 48px); font-weight: 400; letter-spacing: -.04em; line-height: 1.1; color: #622321; }
+.account-auth-intro { margin: 0 0 25px; color: #806d63; font-family: var(--app-font-serif); font-size: 14px; line-height: 1.8; }
+.account-auth-intro strong { color: #622321; overflow-wrap: anywhere; }
+.account-auth-form { display: flex; flex-direction: column; gap: 10px; }
+.account-auth-form label { color: #7d675e; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+.account-email-field { display: flex; align-items: center; gap: 10px; padding: 0 11px; border: 1px solid #cbb9a9; background: #f5f0e6; color: #987e71; }
+.account-email-field:focus-within { outline: 2px solid #8a272b; outline-offset: 2px; }
+.account-email-field input { width: 100%; min-width: 0; min-height: 43px; border: 0; outline: 0; background: transparent; color: #54201e; }
+.auth-submit { width: 100%; margin-top: 8px; gap: 9px; }
+.auth-submit:disabled { opacity: .52; cursor: not-allowed; }
+.auth-setup-note, .auth-notice { margin: 15px 0 0; font-size: 10px; line-height: 1.7; color: #806d63; }
+.auth-setup-note code { color: #6d2525; font-size: 9px; }
+.auth-notice { padding: 11px 12px; background: #f5f0e6; border-left: 2px solid #987e71; }
+.auth-notice.success { border-color: #71876b; }
+.auth-notice.error { border-color: #8a272b; color: #752126; }
+.auth-success-note { display: flex; align-items: center; gap: 8px; margin: 20px 0 8px; color: #59714f; font-family: var(--app-font-serif); }
+.account-orders { margin-top: 28px; padding-top: 22px; border-top: 1px solid #d9ccbd; }
+.account-orders h2 { margin: 0; color: #622321; font-family: var(--app-font-serif); font-size: 22px; font-weight: 400; }
+.account-orders > p { margin: 8px 0 0; color: #806d63; font-size: 10px; line-height: 1.7; }
+.account-order-list { margin: 15px 0 0; padding: 0; list-style: none; }
+.account-order-list li { display: flex; justify-content: space-between; gap: 14px; padding: 11px 0; border-top: 1px solid #ded4c8; color: #806d63; font-size: 10px; }
+.account-order-list strong { display: block; margin-bottom: 4px; color: #622321; font-family: var(--app-font-serif); font-size: 13px; font-weight: 400; }
+.account-order-status { flex: 0 0 auto; align-self: center; color: #59714f; font-size: 9px; text-transform: uppercase; letter-spacing: .06em; }
+
+@media (max-width: 700px) {
+  .account-auth { width: 90%; min-height: 430px; margin: 35px auto 70px; }
+  .account-auth-card { padding: 28px 22px; }
+  .account-auth-card h1 { font-size: 36px; }
+  .account-auth-intro { font-size: 13px; }
+  .account-order-list li { align-items: flex-start; flex-direction: column; gap: 7px; }
+  .account-order-status { align-self: flex-start; }
+}
