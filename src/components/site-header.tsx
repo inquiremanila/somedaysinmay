@@ -1,3 +1,5 @@
+import { ArtworkPrice } from './artwork-price';
+import { useLocalization } from '../localization/provider';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { Menu, Search, ShoppingBag, UserRound, X } from 'lucide-react';
@@ -11,6 +13,7 @@ type SiteHeaderProps = {
 };
 
 function SiteHeader({ cart, setCart }: SiteHeaderProps) {
+  const { t } = useLocalization();
   const [path] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeOverlay, setActiveOverlay] = useState<'search' | 'account' | 'cart' | null>(null);
@@ -22,7 +25,7 @@ function SiteHeader({ cart, setCart }: SiteHeaderProps) {
   const cartCount = cart.reduce((sum, line) => sum + line.quantity, 0);
   const searchTerm = query.trim().toLocaleLowerCase();
   const results = products.filter((product) => {
-    return searchTerm && `${product.name} ${product.kind} ${product.category} ${product.description}`.toLocaleLowerCase().includes(searchTerm);
+    return searchTerm && `${product.name} ${t(product.kind)} ${product.category} ${product.description}`.toLocaleLowerCase().includes(searchTerm);
   });
   const visibleResults = searchTerm ? results : products.slice(0, 4);
 
@@ -79,22 +82,21 @@ function SiteHeader({ cart, setCart }: SiteHeaderProps) {
         >
           {menuOpen ? <X size={17} /> : <Menu size={17} />}
         </button>
-        <nav className={`main-nav ${menuOpen ? 'nav-open' : ''}`} aria-label="Main navigation">
+        <nav className={`main-nav ${menuOpen ? 'nav-open' : ''}`} aria-label={t("Main navigation")}>
           {navLinks.map((item) => (
             <Link key={item.href} href={item.href} className={path === item.href || (item.href === '/biography' && path === '/about') ? 'active' : ''} onClick={() => setMenuOpen(false)} data-testid={`link-nav-${item.label.toLowerCase()}`}>
-              {item.label}
+              {t(item.label)}
             </Link>
           ))}
         </nav>
-        <Link href="/" className="wordmark" aria-label="Somedays in May home" data-testid="link-brand-home">
-          <span>Somedays in May</span>
-          <small>Original textured art</small>
+        <Link href="/" className="wordmark" aria-label={t("Somedays in May home")} data-testid="link-brand-home">
+          <span>{t("Somedays in May")}</span>
         </Link>
         <div className="header-actions">
-          <button className="icon-button" type="button" aria-label="Search the shop" onClick={() => openOverlay('search')} data-testid="button-open-search">
+          <button className="icon-button" type="button" aria-label={t("Search the shop")} onClick={() => openOverlay('search')} data-testid="button-open-search">
             <Search size={16} />
           </button>
-          <button className="icon-button" type="button" aria-label="Your account" onClick={() => openOverlay('account')} data-testid="button-open-account">
+          <button className="icon-button" type="button" aria-label={t("Your account")} onClick={() => openOverlay('account')} data-testid="button-open-account">
             <UserRound size={16} />
           </button>
           <button className="icon-button bag-link" type="button" aria-label={`Shopping bag, ${cartCount} items`} onClick={() => openOverlay('cart')} data-testid="button-open-cart">
@@ -105,32 +107,32 @@ function SiteHeader({ cart, setCart }: SiteHeaderProps) {
 
       {activeOverlay === 'search' && (
         <div className="site-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget) closeOverlay(); }}>
-          <div className="overlay-panel search-dialog" role="dialog" aria-modal="true" aria-label="Search artworks and paper goods" ref={dialogRef} data-testid="dialog-search">
-            <button className="overlay-close" ref={closeRef} type="button" onClick={closeOverlay} aria-label="Close search" data-testid="button-close-search"><X size={18} /></button>
+          <div className="overlay-panel search-dialog" role="dialog" aria-modal="true" aria-label={t("Search artworks and paper goods")} ref={dialogRef} data-testid="dialog-search">
+            <button className="overlay-close" ref={closeRef} type="button" onClick={closeOverlay} aria-label={t("Close search")} data-testid="button-close-search"><X size={18} /></button>
             <label className="search-field">
               <Search size={17} aria-hidden="true" />
-              <input ref={searchInputRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search artworks and paper goods" aria-label="Search products" data-testid="input-product-search" />
+              <input ref={searchInputRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("Search artworks and paper goods")} aria-label={t("Search products")} data-testid="input-product-search" />
             </label>
-            <p className="search-section-label">{query.trim() ? 'Search results' : 'Products'}</p>
+            <p className="search-section-label">{query.trim() ? t("Search results") : t("Products")}</p>
             {visibleResults.length ? (
               <div className="search-results" aria-live="polite">
                 {visibleResults.map((product) => (
                   <Link className="search-result" href={`/product/${product.id}`} key={product.id} onClick={closeOverlay} data-testid={`link-search-result-${product.id}`}>
-                    <img src={product.image} alt="" />
+                    <img src={product.image} alt={t("")} />
                     <span>{product.name}</span>
-                    <small>{product.kind} · {product.size}</small>
+                    <small>{t(product.kind)} · {product.size}</small>
                   </Link>
                 ))}
               </div>
-            ) : <p className="search-empty" role="status">Nothing found for “{query}”. Try another word.</p>}
+            ) : <p className="search-empty" role="status">{t("Nothing found for “")}{query}{t("”. Try another word.")}</p>}
           </div>
         </div>
       )}
 
       {activeOverlay === 'account' && (
         <div className="site-overlay account-overlay-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) closeOverlay(); }}>
-          <div className="overlay-panel account-dialog" role="dialog" aria-modal="true" aria-label="Sign in or create an account" ref={dialogRef} data-testid="dialog-account">
-            <button className="overlay-close" ref={closeRef} type="button" onClick={closeOverlay} aria-label="Close account dialog" data-testid="button-close-account"><X size={18} /></button>
+          <div className="overlay-panel account-dialog" role="dialog" aria-modal="true" aria-label={t("Sign in or create an account")} ref={dialogRef} data-testid="dialog-account">
+            <button className="overlay-close" ref={closeRef} type="button" onClick={closeOverlay} aria-label={t("Close account dialog")} data-testid="button-close-account"><X size={18} /></button>
             <LoginSignup presentation="overlay" />
           </div>
         </div>
@@ -140,15 +142,15 @@ function SiteHeader({ cart, setCart }: SiteHeaderProps) {
         <div className="cart-drawer-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) closeOverlay(); }}>
           <aside className="cart-drawer" role="dialog" aria-modal="true" aria-labelledby="cart-drawer-title" ref={dialogRef} data-testid="dialog-cart">
             <div className="cart-drawer-head">
-              <h2 id="cart-drawer-title">Your bag <span>({cartCount})</span></h2>
-              <button className="icon-button" ref={closeRef} type="button" onClick={closeOverlay} aria-label="Close cart" data-testid="button-close-cart"><X size={18} /></button>
+              <h2 id="cart-drawer-title">{t("Your bag")} <span>({cartCount})</span></h2>
+              <button className="icon-button" ref={closeRef} type="button" onClick={closeOverlay} aria-label={t("Close cart")} data-testid="button-close-cart"><X size={18} /></button>
             </div>
             {cartCount === 0 ? (
               <div className="cart-drawer-empty" data-testid="state-empty-cart">
                 <ShoppingBag size={24} strokeWidth={1.2} />
-                <h3>Your cart is empty</h3>
-                <p>Have an account? <button type="button" onClick={() => setActiveOverlay('account')} data-testid="button-cart-login">Log in</button> to check out faster.</p>
-                <Link href="/artworks" className="outline-button" onClick={closeOverlay} data-testid="link-continue-shopping">Continue shopping</Link>
+                <h3>{t("Your cart is empty")}</h3>
+                <p>{t("Have an account?")} <button type="button" onClick={() => setActiveOverlay('account')} data-testid="button-cart-login">{t("Log in")}</button> {t("to check out faster.")}</p>
+                <Link href="/artworks" className="outline-button" onClick={closeOverlay} data-testid="link-continue-shopping">{t("Continue shopping")}</Link>
               </div>
             ) : (
               <div>
@@ -158,12 +160,12 @@ function SiteHeader({ cart, setCart }: SiteHeaderProps) {
                   return (
                     <article className="drawer-line" key={line.id} data-testid={`cart-line-${line.id}`}>
                       <img src={product.image} alt={product.name} />
-                      <div><strong>{product.name}</strong><small>{product.size} · Quantity {line.quantity}</small><small>Price on request</small></div>
-                      <button className="drawer-remove" type="button" onClick={() => setCart(cart.filter((item) => item.id !== line.id))} aria-label={`Remove ${product.name}`} data-testid={`button-remove-${line.id}`}>Remove</button>
+                      <div><strong>{product.name}</strong><small>{product.size} {t("· Quantity")} {line.quantity}</small><small><ArtworkPrice product={product} quantity={line.quantity} /></small></div>
+                      <button className="drawer-remove" type="button" onClick={() => setCart(cart.filter((item) => item.id !== line.id))} aria-label={`Remove ${product.name}`} data-testid={`button-remove-${line.id}`}>{t("Remove")}</button>
                     </article>
                   );
                 })}
-                <Link href="/cart" className="outline-button drawer-cart-link" onClick={closeOverlay} data-testid="link-view-cart">View your bag</Link>
+                <Link href="/cart" className="outline-button drawer-cart-link" onClick={closeOverlay} data-testid="link-view-cart">{t("View your bag")}</Link>
               </div>
             )}
           </aside>

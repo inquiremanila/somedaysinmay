@@ -1,3 +1,5 @@
+import { ArtworkPrice, CartPrice } from '../components/artwork-price';
+import { useLocalization } from '../localization/provider';
 import { ArrowRight, Minus, Plus, ShoppingBag } from 'lucide-react';
 import { Link } from 'wouter';
 import { products, type Product } from '../data/products';
@@ -10,6 +12,7 @@ type CartPageProps = {
 };
 
 function CartPage({ cart, setCart, syncError }: CartPageProps) {
+  const { t } = useLocalization();
   const cartProducts = cart
     .map((line) => ({ line, product: products.find((product) => product.id === line.id) }))
     .filter((item): item is { line: CartLine; product: Product } => Boolean(item.product));
@@ -26,8 +29,8 @@ function CartPage({ cart, setCart, syncError }: CartPageProps) {
 
   return (
     <main className="cart-page page-enter">
-      <span className="eyebrow">A little something for your space</span>
-      <h1>Your Cart</h1>
+      <span className="eyebrow">{t("A little something for your space")}</span>
+      <h1>{t("Your Cart")}</h1>
       {syncError && <p className="checkout-alert" role="alert">{syncError}</p>}
       {cartProducts.length ? (
         <div className="cart-content">
@@ -38,7 +41,7 @@ function CartPage({ cart, setCart, syncError }: CartPageProps) {
                 <div className="cart-line-title">
                   <Link href={`/product/${product.id}`}>{product.name}</Link>
                   <small>{product.size}</small>
-                  <span>Price on request</span>
+                  <span><ArtworkPrice product={product} quantity={line.quantity} /></span>
                 </div>
                 <div className="quantity-control">
                   <button
@@ -56,26 +59,24 @@ function CartPage({ cart, setCart, syncError }: CartPageProps) {
                     <Plus size={12} />
                   </button>
                 </div>
-                <button className="remove-item" onClick={() => removeProduct(line.id)} aria-label={`Remove ${product.name}`}>
-                  Remove
-                </button>
+                <button className="remove-item" onClick={() => removeProduct(line.id)} aria-label={`Remove ${product.name}`}> {t("Remove")} </button>
               </article>
             ))}
           </div>
           <aside className="cart-summary">
-            <p>Subtotal <span>Price on request</span></p>
-            <small>Final pricing and shipping can be confirmed with the studio.</small>
-            <Link href="/checkout" className="solid-button full-button">Checkout</Link>
-            <Link href="/artworks" className="text-button">Continue shopping <ArrowRight size={13} /></Link>
-            <p className="demo-disclaimer">Demo only — payments and actual checkout are not connected.</p>
+            <p>{t("Subtotal")} <span><CartPrice cart={cart} /></span></p>
+            <small>{t("Final pricing and shipping can be confirmed with the studio.")}</small>
+            <Link href="/checkout" className="solid-button full-button">{t("Checkout")}</Link>
+            <Link href="/artworks" className="text-button">{t("Continue shopping")} <ArrowRight size={13} /></Link>
+            <p className="demo-disclaimer">{t("Send a purchase request to confirm availability and arrange payment with the studio.")}</p>
           </aside>
         </div>
       ) : (
         <div className="empty-cart">
           <ShoppingBag size={25} />
-          <h2>Your cart is taking a quiet moment.</h2>
-          <p>There’s nothing here just yet.</p>
-          <Link href="/artworks" className="outline-button">Explore artworks</Link>
+          <h2>{t("Your cart is taking a quiet moment.")}</h2>
+          <p>{t("There’s nothing here just yet.")}</p>
+          <Link href="/artworks" className="outline-button">{t("Explore artworks")}</Link>
         </div>
       )}
     </main>

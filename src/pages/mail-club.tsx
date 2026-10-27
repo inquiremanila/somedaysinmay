@@ -1,7 +1,9 @@
+import { useLocalization } from '../localization/provider';
 function MailClub() {
+  const { t } = useLocalization();
   return (
-    <main className="mail-club-coming-soon page-enter" aria-label="Mail Club coming soon">
-      <img src="/images/mail-club-coming-soon.png" alt="Coming Soon" />
+    <main className="mail-club-coming-soon page-enter" aria-label={t("Mail Club coming soon")}>
+      <h1>{t("Coming Soon")}</h1>
     </main>
   );
 }

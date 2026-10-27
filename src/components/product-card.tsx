@@ -1,47 +1,27 @@
-import { Heart, Plus } from 'lucide-react';
+import { useState, type CSSProperties } from 'react';
 import { Link } from 'wouter';
+import { ArtworkPrice } from './artwork-price';
+import { useLocalization } from '../localization/provider';
 import type { Product } from '../data/products';
 
-type ProductCardProps = {
-  product: Product;
-  onAdd: (product: Product) => void;
-  favourite: boolean;
-  onFavourite: (id: string) => void;
-};
-
-function ProductCard({ product, onAdd, favourite, onFavourite }: ProductCardProps) {
+export default function ProductCard({ product }: { product: Product }) {
+  const { t } = useLocalization();
+  const [imageRatio, setImageRatio] = useState(1.42);
   return (
-    <article className="product-card">
-      <div className={`product-image product-${product.id}`}>
-        <Link href={`/product/${product.id}`} aria-label={`View ${product.name}`}>
-          <img
-            src={product.image}
-            alt={`${product.name}, ${product.kind === 'Artwork' ? 'original textured artwork' : 'paper goods'}`}
-            loading="lazy"
-          />
-        </Link>
-        <button
-          className={`heart-button ${favourite ? 'is-favourite' : ''}`}
-          onClick={() => onFavourite(product.id)}
-          aria-label={favourite ? `Remove ${product.name} from favourites` : `Add ${product.name} to favourites`}
-        >
-          <Heart size={15} fill={favourite ? 'currentColor' : 'none'} />
-        </button>
+    <article className="gallery-card">
+      <Link href={`/product/${product.id}`} className="gallery-card-image" aria-label={product.name}>
+        <span className="gallery-artwork" style={{ '--artwork-ratio': imageRatio } as CSSProperties}>
+          <img src={product.image} alt={product.description || product.name} loading="lazy" onLoad={(event) => {
+            const image = event.currentTarget;
+            setImageRatio(image.naturalWidth / image.naturalHeight);
+          }} />
+          {product.availability === 'Sold' && <span className="sold-label">{t('Sold out')}</span>}
+        </span>
+      </Link>
+      <div className="gallery-card-caption">
+        <Link href={`/product/${product.id}`}>{product.name}</Link>
+        <ArtworkPrice product={product} />
       </div>
-      <div className="product-caption">
-        <Link href={`/product/${product.id}`}>
-          <span>{product.name}</span>
-          <small>{product.size}</small>
-        </Link>
-        <span className="product-price">Inquire</span>
-      </div>
-      {product.kind === 'Paper goods' && (
-        <button className="quick-add" onClick={() => onAdd(product)}>
-          Add to bag <Plus size={12} />
-        </button>
-      )}
     </article>
   );
 }
-
-export default ProductCard;

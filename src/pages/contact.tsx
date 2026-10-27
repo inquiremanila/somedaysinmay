@@ -1,105 +1,99 @@
-import { useState } from 'react';
-import { ArrowUpRight, Check } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link } from 'wouter';
+import { useAuth } from '../firebase/use-auth';
+import { createContactInquiry } from '../firebase/store';
+import { firebaseConfigured } from '../firebase/firebase';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { socials } from '../data/social-links';
+import { useLocalization } from '../localization/provider';
 
 const contactSchema = z.object({
-  name: z.string().trim().min(1, 'Please enter your name.'),
-  email: z.string().trim().email('Please enter a valid email address.'),
-  subject: z.string().min(1, 'Choose a subject.'),
-  message: z.string().trim().min(1, 'Please add a message.'),
+  name: z.string().trim().min(1, 'Please enter your name.').max(120),
+  email: z.string().trim().email('Please enter a valid email address.').max(254),
+  location: z.string().trim().max(150),
+  size: z.string().trim().max(150),
+  budget: z.string().trim().max(150),
+  message: z.string().trim().min(1, 'Please add a message.').max(4000),
 });
-
 type ContactFormValues = z.infer<typeof contactSchema>;
 
 function Contact() {
+  const { t } = useLocalization();
+  const { user, loading } = useAuth();
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
   const form = useForm<ContactFormValues>({
     resolver: zodResolver(contactSchema),
-    defaultValues: { name: '', email: '', subject: '', message: '' },
+    defaultValues: (() => {
+      try { return JSON.parse(sessionStorage.getItem('somedays-contact-draft') || 'null') || { name: '', email: '', location: '', size: '', budget: '', message: '' }; }
+      catch { return { name: '', email: '', location: '', size: '', budget: '', message: '' }; }
+    })(),
   });
-
-  function sendNote() {
-    setSent(true);
+  useEffect(() => {
+    const subscription = form.watch((values) => {
+      try { sessionStorage.setItem('somedays-contact-draft', JSON.stringify(values)); } catch { /* Form remains usable without storage. */ }
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
+  useEffect(() => { if (user?.email) form.setValue('email', user.email); }, [user?.email, form]);
+  async function submitInquiry(values: ContactFormValues) {
+    if (!user?.email) return;
+    setError('');
+    try {
+      await createContactInquiry(user.uid, { ...values, email: user.email });
+      try { sessionStorage.removeItem('somedays-contact-draft'); } catch { /* Saved successfully. */ }
+      setSent(true);
+    } catch {
+      setError('Your inquiry could not be saved. Please try again.');
+    }
   }
-
   return (
-    <main className="contact-page page-enter" data-testid="page-contact">
-      <section className="contact-copy">
-        <span className="eyebrow">A note is always welcome</span>
-        <h1>Contact</h1>
-        <p>For inquiries, commissions, or collaboration opportunities, feel free to send a message. I’d love to hear from you.</p>
-        <a href="mailto:inquire@somedaysinmay.com" data-testid="link-contact-email">inquire@somedaysinmay.com</a>
-        <div className="contact-socials" aria-label="Studio social links">
-          {socials.slice(0, 3).map((social) => (
-            <a href={social.url} key={social.name} target="_blank" rel="noreferrer" data-testid={`link-contact-${social.name.toLowerCase()}`}>
-              {social.name}<ArrowUpRight size={13} />
-            </a>
-          ))}
-        </div>
-        <img className="contact-detail-image" src="/images/under-tow.jpg" alt="Painted texture in soft sea-glass and sand tones" loading="lazy" />
-      </section>
-      <div className="contact-form-wrap">
-        {sent ? (
-          <div className="form-success" role="status" data-testid="status-contact-sent">
-            <Check size={20} />
-            <h2>Thank you for your note.</h2>
-            <p>This form is not connected to email delivery just yet. Please write directly to <a href="mailto:inquire@somedaysinmay.com">inquire@somedaysinmay.com</a>.</p>
-          </div>
-        ) : (
-          <Form {...form}>
-            <form className="contact-form" onSubmit={form.handleSubmit(sendNote)} data-testid="form-contact">
-              <FormField control={form.control} name="name" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Name *</FormLabel>
-                  <FormControl><input autoComplete="name" {...field} data-testid="input-contact-name" /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="email" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email *</FormLabel>
-                  <FormControl><input type="email" autoComplete="email" {...field} data-testid="input-contact-email" /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="subject" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Subject *</FormLabel>
-                  <FormControl>
-                    <select {...field} data-testid="select-contact-subject">
-                      <option value="" disabled>Select a subject</option>
-                      <option value="artwork">Artwork enquiry</option>
-                      <option value="commission">Commission</option>
-                      <option value="collaboration">Collaboration</option>
-                      <option value="other">Something else</option>
-                    </select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="message" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Message *</FormLabel>
-                  <FormControl><textarea rows={5} {...field} data-testid="textarea-contact-message" /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <button className="solid-button" type="submit" data-testid="button-send-message">Send Message</button>
-              <small>We read every note with care. Form delivery is not connected on this demo site.</small>
-            </form>
-          </Form>
-        )}
+    <main className="studio-contact page-enter" data-testid="page-contact">
+      <h1>{t('Contact')}</h1>
+      <div className="studio-contact-intro">
+        <p>{t('For available works, commissions, or collaborations, share a little about what you have in mind.')}</p>
+        <p>{t('Collectors in Europe, America, Australia and the Philippines are welcome to inquire. Shipping and payment details are confirmed individually.')}</p>
+        <p>{t('You’re welcome to include your preferred size, budget, and any references.')} <a href="mailto:inquire@somedaysinmay.com" data-testid="link-contact-email">inquire@somedaysinmay.com</a></p>
       </div>
-      <figure className="contact-image-column">
-        <img className="contact-side-image" src="/images/room-blue.jpg" alt="A blue textured artwork in a calm studio interior" data-testid="image-contact-studio" />
-        <figcaption>Somedays in May · Studio notes</figcaption>
-      </figure>
+      <Form {...form}>
+        <form className="studio-contact-form" onSubmit={form.handleSubmit(submitInquiry)} data-testid="form-contact">
+          <div className="studio-contact-pair">
+            <FormField control={form.control} name="name" render={({ field }) => <FormItem>
+              <FormLabel className="sr-only">{t('Name *')}</FormLabel>
+              <FormControl><input autoComplete="name" required maxLength={120} placeholder={t('Name')} {...field} data-testid="input-contact-name" /></FormControl><FormMessage />
+            </FormItem>} />
+            <FormField control={form.control} name="email" render={({ field }) => <FormItem>
+              <FormLabel className="sr-only">{t('Email *')}</FormLabel>
+              <FormControl><input type="email" readOnly={Boolean(user)} autoComplete="email" required maxLength={254} placeholder={t('Email')} {...field} data-testid="input-contact-email" /></FormControl><FormMessage />
+            </FormItem>} />
+          </div>
+          <FormField control={form.control} name="location" render={({ field }) => <FormItem>
+            <FormLabel className="sr-only">{t('Country / City')}</FormLabel>
+            <FormControl><input autoComplete="address-level2" maxLength={150} placeholder={t('Country / City')} {...field} /></FormControl><FormMessage />
+          </FormItem>} />
+          <FormField control={form.control} name="size" render={({ field }) => <FormItem>
+            <FormLabel className="sr-only">{t('Preferred size')}</FormLabel>
+            <FormControl><input maxLength={150} placeholder={t('Preferred size')} {...field} /></FormControl><FormMessage />
+          </FormItem>} />
+          <FormField control={form.control} name="budget" render={({ field }) => <FormItem>
+            <FormLabel className="sr-only">{t('Budget (optional)')}</FormLabel>
+            <FormControl><input maxLength={150} placeholder={t('Budget (optional)')} {...field} /></FormControl><FormMessage />
+          </FormItem>} />
+          <FormField control={form.control} name="message" render={({ field }) => <FormItem>
+            <FormLabel className="sr-only">{t('Message *')}</FormLabel>
+            <FormControl><textarea required maxLength={4000} rows={8} placeholder={t('Message')} {...field} data-testid="textarea-contact-message" /></FormControl><FormMessage />
+          </FormItem>} />
+          {!user && <p><Link href="/account" onClick={() => localStorage.setItem('somedays-firebase-return-path', '/contact')}>{t('Sign in to send your inquiry')}</Link>{t('. Your message will be kept on this browser tab.')}</p>}
+          {error && <p role="alert">{t(error)}</p>}
+          {sent ? <p className="studio-contact-status" role="status">{t('Your inquiry has been saved. The studio will reply by email.')}</p>
+            : <button className="solid-button" type="submit" disabled={loading || form.formState.isSubmitting || !user?.email || !firebaseConfigured} data-testid="button-send-message">{t(form.formState.isSubmitting ? 'Sending…' : 'Submit')}</button>}
+
+        </form>
+      </Form>
+      <p className="studio-contact-note">{t('For collectors, galleries, and collaborators. A conversation starts here.')}</p>
     </main>
   );
 }
-
 export default Contact;

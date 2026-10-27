@@ -1,3 +1,4 @@
+import { useLocalization } from '../localization/provider';
 import { useEffect, useState, type FormEvent } from 'react';
 import { collection, onSnapshot, type DocumentData } from 'firebase/firestore';
 import { Link } from 'wouter';
@@ -64,6 +65,7 @@ function formatCurrency(amount: number) {
 }
 
 function Auctions() {
+  const { t } = useLocalization();
   const { user } = useAuth();
   const [auctions, setAuctions] = useState<AuctionListing[]>([]);
   const [isLoading, setIsLoading] = useState(firebaseConfigured);
@@ -152,36 +154,33 @@ function Auctions() {
   return (
     <main className="auction-page page-enter">
       <section className="auction-hero">
-        <span className="eyebrow">SOMEDAYS IN MAY · ONLINE AUCTIONS</span>
-        <h1>The Auction Room</h1>
-        <p>Some pieces are meant to be found. Others are meant to be won.</p>
+        <span className="eyebrow">{t("SOMEDAYS IN MAY · ONLINE AUCTIONS")}</span>
+        <h1>{t("The Auction Room")}</h1>
+        <p>{t("Some pieces are meant to be found. Others are meant to be won.")}</p>
       </section>
 
       <section className="auction-listing-section" aria-labelledby="auction-list-heading">
         <div className="auction-section-heading">
           <div>
-            <span className="eyebrow">A PLACE FOR COLLECTORS</span>
-            <h2 id="auction-list-heading">Open for bidding</h2>
+            <span className="eyebrow">{t("A PLACE FOR COLLECTORS")}</span>
+            <h2 id="auction-list-heading">{t("Open for bidding")}</h2>
           </div>
-          <p>Each bid is placed in Philippine pesos and updates the lot in real time.</p>
+          <p>{t("Each bid is placed in Philippine pesos and updates the lot in real time.")}</p>
         </div>
 
         {!firebaseConfigured && (
           <div className="auction-demo-notice" role="status">
-            <strong>Design preview only.</strong> These example lots and bid amounts are not live auctions. Connect
-            Firebase and add real auction records to accept bids.
-          </div>
+            <strong>{t("Design preview only.")}</strong> {t("These example lots and bid amounts are not live auctions. Connect Firebase and add real auction records to accept bids.")} </div>
         )}
 
         {loadError && <p className="auction-feedback error" role="alert">{loadError}</p>}
         {invalidCount > 0 && (
           <p className="auction-feedback error" role="status">
-            {invalidCount} auction {invalidCount === 1 ? 'record needs' : 'records need'} valid lot details and bid settings before display.
-          </p>
+            {invalidCount} {t("auction")} {invalidCount === 1 ? t("record needs") : t("records need")} {t("valid lot details and bid settings before display.")} </p>
         )}
 
         {isLoading ? (
-          <p className="auction-empty-state" role="status">Finding the open lots…</p>
+          <p className="auction-empty-state" role="status">{t("Finding the open lots…")}</p>
         ) : displayAuctions.length ? (
           <div className="auction-grid">
             {displayAuctions.map((auction) => (
@@ -190,21 +189,21 @@ function Auctions() {
           </div>
         ) : (
           <div className="auction-empty-state">
-            <span className="eyebrow">NO OPEN LOTS</span>
-            <p>The next pieces will appear here when bidding opens.</p>
+            <span className="eyebrow">{t("NO OPEN LOTS")}</span>
+            <p>{t("The next pieces will appear here when bidding opens.")}</p>
           </div>
         )}
       </section>
 
       <section className="auction-how" aria-labelledby="how-bidding-works">
         <div>
-          <span className="eyebrow">A SIMPLE PROCESS</span>
-          <h2 id="how-bidding-works">How bidding works</h2>
+          <span className="eyebrow">{t("A SIMPLE PROCESS")}</span>
+          <h2 id="how-bidding-works">{t("How bidding works")}</h2>
         </div>
         <ol>
-          <li><span>01</span><p>Sign in with your email to place a bid.</p></li>
-          <li><span>02</span><p>Enter at least the minimum next bid shown on the artwork.</p></li>
-          <li><span>03</span><p>The highest eligible bid is recorded when the auction closes.</p></li>
+          <li><span>01</span><p>{t("Sign in with your email to place a bid.")}</p></li>
+          <li><span>02</span><p>{t("Enter at least the minimum next bid shown on the artwork.")}</p></li>
+          <li><span>03</span><p>{t("The highest eligible bid is recorded when the auction closes.")}</p></li>
         </ol>
       </section>
 
@@ -219,24 +218,24 @@ function Auctions() {
             <button
               className="auction-modal-close"
               type="button"
-              aria-label="Close bidding dialog"
+              aria-label={t("Close bidding dialog")}
               onClick={() => setSelectedAuctionId(null)}
             >
               ×
             </button>
-            <span className="eyebrow">LOT {selectedAuction.lotNumber}</span>
-            <h2 id="bid-dialog-title">Place your bid</h2>
+            <span className="eyebrow">{t("LOT")} {selectedAuction.lotNumber}</span>
+            <h2 id="bid-dialog-title">{t("Place your bid")}</h2>
             <p className="auction-modal-piece">{selectedAuction.title} · {selectedAuction.size}</p>
             <div className="auction-modal-bid-summary">
-              <span>Current bid</span>
+              <span>{t("Current bid")}</span>
               <strong>{formatCurrency(selectedAuction.currentBid)}</strong>
-              <span>Minimum next bid</span>
+              <span>{t("Minimum next bid")}</span>
               <strong>{formatCurrency(selectedAuction.currentBid + selectedAuction.minimumIncrement)}</strong>
             </div>
 
             {user ? (
               <form className="auction-bid-form" onSubmit={handleBidSubmit}>
-                <label htmlFor="bid-amount">Your bid in Philippine pesos</label>
+                <label htmlFor="bid-amount">{t("Your bid in Philippine pesos")}</label>
                 <div className="auction-bid-input">
                   <span aria-hidden="true">₱</span>
                   <input
@@ -250,21 +249,19 @@ function Auctions() {
                     required
                   />
                 </div>
-                <p>Minimum increment: {formatCurrency(selectedAuction.minimumIncrement)}</p>
+                <p>{t("Minimum increment:")} {formatCurrency(selectedAuction.minimumIncrement)}</p>
                 <button className="primary-button auction-bid-button" type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? 'SUBMITTING…' : 'SUBMIT BID'}
+                  {isSubmitting ? t("SUBMITTING…") : t("SUBMIT BID")}
                 </button>
               </form>
             ) : (
               <div className="auction-sign-in">
-                <p>Sign in or create an account with your email before placing a bid.</p>
+                <p>{t("Sign in or create an account with your email before placing a bid.")}</p>
                 <Link
                   className="primary-button auction-bid-button"
                   href="/account"
                   onClick={() => window.localStorage.setItem(RETURN_PATH_KEY, '/auctions')}
-                >
-                  SIGN IN / CREATE ACCOUNT
-                </Link>
+                > {t("SIGN IN / CREATE ACCOUNT")} </Link>
               </div>
             )}
 

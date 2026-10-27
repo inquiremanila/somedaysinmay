@@ -13,6 +13,7 @@ import {
   Timestamp,
   writeBatch,
 } from 'firebase/firestore';
+import { products } from '../data/products';
 import type { CartLine } from '../types/store';
 import { firebaseApp } from './firebase';
 
@@ -32,6 +33,8 @@ export type OrderRequestSummary = {
   createdAt: Date | null;
   itemCount: number;
   status: 'inquiry';
+  message: string;
+  intent: 'inquiry' | 'purchase';
 };
 
 function requireFirestore() {
@@ -100,11 +103,17 @@ export async function createOrderInquiry(
   uid: string,
   shipping: ShippingDetails,
   cart: CartLine[],
+  message = '',
 ) {
-  if (!cart.length) throw new Error('Add an item to your cart before sending an order inquiry.');
+  if (!cart.length || cart.length > 50) throw new Error('A purchase request must contain 1–50 items.');
+  if (cart.some((line) => !Number.isSafeInteger(line.quantity) || line.quantity < 1 || line.quantity > 99)) throw new Error('Invalid item quantity.');
 
+  if (message.trim().length > 4000) throw new Error('The message is too long.');
+  if (cart.some((line) => !products.some((product) => product.id === line.id && product.availability === 'Available'))) throw new Error('An item is unavailable.');
   const db = requireFirestore();
   const order = await addDoc(collection(db, 'users', uid, 'orders'), {
+    intent: 'purchase',
+    message: message.trim(),
     contactEmail: shipping.email.trim(),
     shipping: {
       name: shipping.name.trim(),
@@ -148,6 +157,38 @@ export async function getUserOrders(uid: string): Promise<OrderRequestSummary[]>
       createdAt,
       itemCount,
       status: 'inquiry',
+      message: typeof data.message === 'string' ? data.message : '',
+      intent: data.intent === 'purchase' ? 'purchase' : 'inquiry',
     };
+  });
+}
+
+export async function createArtworkInquiry(uid: string, email: string, productId: string, message: string) {
+  const trimmed = message.trim();
+  if (!trimmed || trimmed.length > 4000 || !products.some((product) => product.id === productId)) {
+    throw new Error('Please enter a valid artwork inquiry.');
+  }
+  return addDoc(collection(requireFirestore(), 'users', uid, 'inquiries'), {
+    productId, contactEmail: email, message: trimmed,
+    status: 'inquiry', createdAt: serverTimestamp(),
+  });
+}
+
+export async function getUserInquiries(uid: string) {
+  const snapshot = await getDocs(query(collection(requireFirestore(), 'users', uid, 'inquiries'), orderBy('createdAt', 'desc'), limit(10)));
+  return snapshot.docs.map((item) => ({
+    id: item.id,
+    productId: String(item.data().productId),
+    message: String(item.data().message),
+  }));
+}
+
+export async function createContactInquiry(uid: string, values: {
+  name: string; email: string; location: string; size: string; budget: string; message: string;
+}) {
+  return addDoc(collection(requireFirestore(), 'users', uid, 'contactInquiries'), {
+    name: values.name.trim(), contactEmail: values.email.trim(),
+    location: values.location.trim(), size: values.size.trim(), budget: values.budget.trim(),
+    message: values.message.trim(), status: 'inquiry', createdAt: serverTimestamp(),
   });
 }

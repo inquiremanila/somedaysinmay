@@ -15,7 +15,7 @@ export const policyGroups: FAQGroup[] = [
     questions: [
       {
         question: 'Privacy Policy',
-        answer: 'This demo does not submit or store contact form details. Cart contents and favourites are saved locally in your browser.',
+        answer: 'Signed-in artwork inquiries and purchase requests are stored in Firebase. Your cart, currency, and language preferences are saved in your browser. Country detection uses Country.is, with ipapi as a fallback; these services receive your IP address. Exchange rates are requested from Frankfurter. The general contact form does not deliver messages yet.',
       },
     ],
   },

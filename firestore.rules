@@ -98,6 +98,8 @@ service cloud.firestore {
 
     function validOrderInquiry() {
       return request.resource.data.keys().hasOnly([
+          'intent',
+          'message',
           'contactEmail',
           'shipping',
           'items',
@@ -111,6 +113,8 @@ service cloud.firestore {
           'status',
           'createdAt'
         ])
+        && (!('intent' in request.resource.data) || request.resource.data.intent in ['inquiry', 'purchase'])
+        && (!('message' in request.resource.data) || (request.resource.data.message is string && request.resource.data.message.size() <= 4000))
         && request.resource.data.contactEmail is string
         && request.resource.data.contactEmail.size() > 3
         && request.resource.data.contactEmail.size() <= 254
@@ -147,6 +151,46 @@ service cloud.firestore {
           && request.resource.data.quantity <= 99
           && request.resource.data.updatedAt == request.time;
         allow delete: if ownsUser(userId);
+      }
+
+      match /contactInquiries/{inquiryId} {
+        allow get, list: if ownsUser(userId);
+        allow create: if ownsUser(userId)
+          && request.resource.data.keys().hasOnly(['name', 'contactEmail', 'location', 'size', 'budget', 'message', 'status', 'createdAt'])
+          && request.resource.data.keys().hasAll(['name', 'contactEmail', 'location', 'size', 'budget', 'message', 'status', 'createdAt'])
+          && request.resource.data.contactEmail == request.auth.token.email
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 120
+          && request.resource.data.location is string
+          && request.resource.data.location.size() <= 150
+          && request.resource.data.size is string
+          && request.resource.data.size.size() <= 150
+          && request.resource.data.budget is string
+          && request.resource.data.budget.size() <= 150
+          && request.resource.data.message is string
+          && request.resource.data.message.size() > 0
+          && request.resource.data.message.size() <= 4000
+          && request.resource.data.status == 'inquiry'
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
+
+      match /inquiries/{inquiryId} {
+        allow get, list: if ownsUser(userId);
+        allow create: if ownsUser(userId)
+          && request.resource.data.keys().hasOnly(['productId', 'contactEmail', 'message', 'status', 'createdAt'])
+          && request.resource.data.keys().hasAll(['productId', 'contactEmail', 'message', 'status', 'createdAt'])
+          && request.resource.data.productId is string
+          && request.resource.data.productId.size() > 0
+          && request.resource.data.productId.size() <= 120
+          && request.resource.data.contactEmail == request.auth.token.email
+          && request.resource.data.message is string
+          && request.resource.data.message.size() > 0
+          && request.resource.data.message.size() <= 4000
+          && request.resource.data.status == 'inquiry'
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
       }
 
       match /orders/{orderId} {

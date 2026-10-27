@@ -1,3 +1,4 @@
+import { useLocalization } from '../localization/provider';
 import { useEffect, useState, type FormEvent } from 'react';
 import {
   isSignInWithEmailLink,
@@ -7,9 +8,10 @@ import {
 } from 'firebase/auth';
 import { Mail } from 'lucide-react';
 import { useAuth } from './use-auth';
-import { ensureUserProfile, getUserOrders, type OrderRequestSummary } from './store';
+import { ensureUserProfile, getUserOrders, getUserInquiries, type OrderRequestSummary } from './store';
 import { firebaseAuth, firebaseConfigured } from './firebase';
 import './login-signup.css';
+import { products } from '../data/products';
 
 const EMAIL_STORAGE_KEY = 'somedays-firebase-email';
 const RETURN_PATH_KEY = 'somedays-firebase-return-path';
@@ -24,12 +26,14 @@ function formatOrderDate(date: Date | null) {
 }
 
 function LoginSignup({ presentation = 'page' }: LoginSignupProps) {
+  const { t } = useLocalization();
   const { user, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [isEmailLinkPending, setIsEmailLinkPending] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [orders, setOrders] = useState<OrderRequestSummary[]>([]);
+  const [inquiries, setInquiries] = useState<Awaited<ReturnType<typeof getUserInquiries>>>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
 
   async function completeEmailSignIn(address: string) {
@@ -80,15 +84,16 @@ function LoginSignup({ presentation = 'page' }: LoginSignupProps) {
   useEffect(() => {
     if (!user) {
       setOrders([]);
+      setInquiries([]);
       setOrdersLoading(false);
       return;
     }
 
     let cancelled = false;
     setOrdersLoading(true);
-    Promise.all([ensureUserProfile(user.uid, user.email), getUserOrders(user.uid)])
-      .then(([, recentOrders]) => {
-        if (!cancelled) setOrders(recentOrders);
+    Promise.all([ensureUserProfile(user.uid, user.email), getUserOrders(user.uid), getUserInquiries(user.uid)])
+      .then(([, recentOrders, recentInquiries]) => {
+        if (!cancelled) { setOrders(recentOrders); setInquiries(recentInquiries); }
       })
       .catch(() => {
         if (!cancelled) {
@@ -153,49 +158,55 @@ function LoginSignup({ presentation = 'page' }: LoginSignupProps) {
   return (
     <Container className={`account-auth page-enter${presentation === 'overlay' ? ' account-auth-overlay' : ''}`}>
       <section className="account-auth-card">
-        <span className="eyebrow">SOMEDAYS IN MAY · YOUR ACCOUNT</span>
-        <h1>{user ? 'Welcome back.' : presentation === 'overlay' ? 'Sign in or create account' : 'A quieter way to sign in.'}</h1>
+        <span className="eyebrow">{t("SOMEDAYS IN MAY · YOUR ACCOUNT")}</span>
+        <h1>{user ? t("Welcome back.") : presentation === 'overlay' ? t("Sign in or create account") : t("A quieter way to sign in.")}</h1>
 
         {user ? (
           <>
-            <p className="account-auth-intro">
-              Signed in as <strong>{user.email}</strong>
+            <p className="account-auth-intro"> {t("Signed in as")} <strong>{user.email}</strong>
             </p>
-            <p className="auth-success-note">Your studio account is ready.</p>
-            <button className="outline-button auth-submit" type="button" onClick={handleSignOut}>
-              SIGN OUT
-            </button>
+            <p className="auth-success-note">{t("Your studio account is ready.")}</p>
+            <button className="outline-button auth-submit" type="button" onClick={handleSignOut}> {t("SIGN OUT")} </button>
 
             <section className="account-orders" aria-labelledby="account-orders-title">
-              <h2 id="account-orders-title">Your order requests</h2>
+              <h2 id="account-orders-title">{t("Your purchase requests")}</h2>
               {ordersLoading ? (
-                <p role="status">Loading your order requests…</p>
+                <p role="status">{t("Loading your order requests…")}</p>
               ) : orders.length ? (
                 <ul className="account-order-list">
                   {orders.map((order) => (
                     <li key={order.id}>
                       <span>
-                        <strong>Request {order.id.slice(0, 8).toUpperCase()}</strong>
-                        {formatOrderDate(order.createdAt)} · {order.itemCount} {order.itemCount === 1 ? 'item' : 'items'}
+                        <strong>{t("Request")} {order.id.slice(0, 8).toUpperCase()}</strong>
+                        {formatOrderDate(order.createdAt)} · {order.itemCount} {order.itemCount === 1 ? t("item") : t("items")}
                       </span>
-                      <span className="account-order-status">Inquiry</span>
+                      <span className="account-order-status">{order.intent === 'purchase' ? t("Purchase request") : t("Inquiry")}</span>
+                      {order.message && <p>{order.message}</p>}
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p>Your order requests will appear here. Payments are not enabled yet.</p>
+                <p>{t("Your purchase requests will appear here. Payment details are confirmed by the studio.")}</p>
               )}
+            </section>
+            <section className="account-orders" aria-labelledby="account-inquiries-title">
+              <h2 id="account-inquiries-title">{t("Your artwork inquiries")}</h2>
+              {ordersLoading ? <p role="status">{t("Loading inquiries…")}</p> : inquiries.length ? (
+                <ul className="account-inquiry-list">{inquiries.map((inquiry) => (
+                  <li key={inquiry.id}>
+                    <strong>{products.find((product) => product.id === inquiry.productId)?.name || inquiry.productId}</strong>
+                    <p className="request-message">{inquiry.message}</p>
+                  </li>
+                ))}</ul>
+              ) : <p>{t("Your artwork inquiries will appear here.")}</p>}
             </section>
           </>
         ) : (
           <>
-            <p className="account-auth-intro">
-              Enter your email and we’ll send you a secure sign-in link. If this is your first visit, your
-              account is created when you confirm the link.
-            </p>
+            <p className="account-auth-intro"> {t("Enter your email and we’ll send you a secure sign-in link. If this is your first visit, your account is created when you confirm the link.")} </p>
 
             <form className="account-auth-form" onSubmit={handleSubmit}>
-              <label htmlFor="account-email">{isEmailLinkPending ? 'Confirm your email' : 'Email address'}</label>
+              <label htmlFor="account-email">{isEmailLinkPending ? t("Confirm your email") : t("Email address")}</label>
               <div className="account-email-field">
                 <Mail size={15} aria-hidden="true" />
                 <input
@@ -205,7 +216,7 @@ function LoginSignup({ presentation = 'page' }: LoginSignupProps) {
                   required
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  placeholder="you@example.com"
+                  placeholder={t("you@example.com")}
                 />
               </div>
               <button
@@ -214,26 +225,23 @@ function LoginSignup({ presentation = 'page' }: LoginSignupProps) {
                 disabled={loading || isSubmitting || !firebaseConfigured}
               >
                 {isSubmitting
-                  ? 'PLEASE WAIT…'
+                  ? t("PLEASE WAIT…")
                   : isEmailLinkPending
-                    ? 'CONFIRM SIGN IN'
-                    : 'EMAIL ME A SIGN-IN LINK'}
+                    ? t("CONFIRM SIGN IN")
+                    : t("EMAIL ME A SIGN-IN LINK")}
               </button>
             </form>
 
             {!firebaseConfigured && (
-              <p className="auth-setup-note">
-                Firebase is not connected yet. Add <code>VITE_FIREBASE_API_KEY</code>,{' '}
-                <code>VITE_FIREBASE_AUTH_DOMAIN</code>, and <code>VITE_FIREBASE_APP_ID</code> to the
-                environment, then enable email-link sign-in and publish the Firestore rules.
-              </p>
+              <p className="auth-setup-note"> {t("Firebase is not connected yet. Add")} <code>{t("VITE_FIREBASE_API_KEY")}</code>,{' '}
+                <code>{t("VITE_FIREBASE_AUTH_DOMAIN")}</code>{t(", and")} <code>{t("VITE_FIREBASE_APP_ID")}</code> {t("to the environment, then enable email-link sign-in and publish the Firestore rules.")} </p>
             )}
           </>
         )}
 
         {notice && (
           <p className={`auth-notice ${notice.kind}`} role="status" aria-live="polite">
-            {notice.message}
+            {t(notice.message)}
           </p>
         )}
       </section>

@@ -2,101 +2,44 @@ export type Product = {
   id: string;
   name: string;
   kind: 'Artwork' | 'Paper goods';
-  price: null;
   size: string;
   image: string;
   description: string;
+  material?: string;
   availability: 'Available' | 'Sold';
   category: string;
+  collection?: string;
+} & ({ price: null; currency?: never } | { price: number; currency: string });
+
+const sizes: Record<string, string> = {
+  'space-in-between': '40 × 40 cm',
+  tiled: '50 × 70 cm',
+  swirls: '100 × 145 cm',
+};
+const descriptions: Record<string, string> = {
+  'undertow-1': 'Undertow 1 is an original textured abstract painting with rows of sculptural marks graduating from deep blue to white.',
+  'undertow-2': 'Undertow 2 is an original textured abstract painting exploring a gradient of white, olive and deep green in repeated raised marks.',
+  'undertow-3': 'Undertow 3 is an original textured abstract painting with repeated raised marks shifting from soft pink to deep red.',
+  'undertow-4': 'Undertow 4 is an original textured abstract painting with horizontal rows of raised marks in white and shades of blue.',
+  'space-in-between': 'Space in Between is an original textured abstract painting from the Lines collection, pairing vertical blue marks with open white space.',
+  tiled: 'Tiled is an original textured abstract painting from the Lines collection, with a grid of blue and white textured forms.',
+  swirls: 'Swirls is an original textured abstract painting from the Swirls & Sand collection, featuring flowing black and cream forms.',
 };
 
 export const products: Product[] = [
-  {
-    id: 'under-tow',
-    name: 'Under Tow',
-    kind: 'Artwork',
-    price: null,
-    size: '100 × 75 cm',
-    image: '/images/under-tow.jpg',
-    description: 'A textured acrylic painting inspired by the rhythm of the sea and the quiet moments in between.',
-    availability: 'Available',
-    category: 'Ocean Inspired',
-  },
-  {
-    id: 'tidal-shift',
-    name: 'Tidal Shift',
-    kind: 'Artwork',
-    price: null,
-    size: '100 × 75 cm',
-    image: '/images/room-tide.jpg',
-    description: 'A study in shifting light, layered blue and the steady pull of a changing tide.',
-    availability: 'Available',
-    category: 'Blue Series',
-  },
-  {
-    id: 'sand-and-stone',
-    name: 'Sand and Stone',
-    kind: 'Artwork',
-    price: null,
-    size: '70 × 50 cm',
-    image: '/images/room-blue.jpg',
-    description: 'Quiet earth tones and tactile marks made slowly by hand.',
-    availability: 'Available',
-    category: 'Earth Tones',
-  },
-  {
-    id: 'quiet-bay',
-    name: 'Quiet Bay',
-    kind: 'Artwork',
-    price: null,
-    size: '70 × 75 cm',
-    image: '/images/under-tow.jpg',
-    description: 'An abstracted glimpse of water in the soft light of an ordinary day.',
-    availability: 'Available',
-    category: 'Ocean Inspired',
-  },
-  {
-    id: 'blue-scales-bookmark',
-    name: 'Blue Scales Bookmark',
-    kind: 'Paper goods',
-    price: null,
-    size: '5 × 18 cm',
-    image: '/images/under-tow.jpg',
-    description: 'A little artwork for wherever you left off. Printed on premium textured paper.',
-    availability: 'Available',
-    category: 'Bookmarks',
-  },
-  {
-    id: 'rose-bookmark',
-    name: 'Rose Bookmark',
-    kind: 'Paper goods',
-    price: null,
-    size: '5 × 18 cm',
-    image: '/images/room-tide.jpg',
-    description: 'A single rose, gathered from the garden and printed on softly textured paper.',
-    availability: 'Available',
-    category: 'Bookmarks',
-  },
-  {
-    id: 'postcard-set',
-    name: 'Postcard Set',
-    kind: 'Paper goods',
-    price: null,
-    size: 'Set of 5',
-    image: '/images/room-blue.jpg',
-    description: 'Small works of art made to send, keep, or pin somewhere you can see them.',
-    availability: 'Available',
-    category: 'Postcards',
-  },
-  {
-    id: 'sticker-sheet',
-    name: 'Sticker Sheet',
-    kind: 'Paper goods',
-    price: null,
-    size: 'A5 sheet',
-    image: '/images/under-tow.jpg',
-    description: 'A collection of tiny studio favourites, printed on matte paper.',
-    availability: 'Available',
-    category: 'Stationery',
-  },
-];
+  { id: 'undertow-1', name: 'Undertow 1', image: '/images/undertow-blue.png', collection: 'Undertow' },
+  { id: 'undertow-2', name: 'Undertow 2', image: '/images/undertow-olive.png', collection: 'Undertow' },
+  { id: 'undertow-3', name: 'Undertow 3', image: '/images/undertow-pink.jpg', collection: 'Undertow' },
+  { id: 'undertow-4', name: 'Undertow 4', image: '/images/undertow.png', collection: 'Undertow' },
+  { id: 'space-in-between', name: 'Space in Between', image: '/images/space-in-between.jpg', collection: 'Lines' },
+  { id: 'tiled', name: 'Tiled', image: '/images/tiled.jpg', collection: 'Lines' },
+  { id: 'swirls', name: 'Swirls', image: '/images/swirls.jpg', collection: 'Swirls & Sand' },
+].map((painting): Product => ({
+  ...painting, kind: 'Artwork',
+  price: null,
+  size: sizes[painting.id] || '100 × 75 cm',
+  description: `${descriptions[painting.id]} Mixed media acrylic on canvas, ${sizes[painting.id] || '100 × 75 cm'}.`,
+  material: 'Mixed Media Acrylic on Canvas',
+  availability: ['undertow-3', 'space-in-between', 'swirls'].includes(painting.id) ? 'Available' : 'Sold',
+  category: painting.collection,
+}));
