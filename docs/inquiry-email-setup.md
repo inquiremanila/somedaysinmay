@@ -6,9 +6,9 @@ Prepared locally; not deployed or live-tested. New artwork inquiries, contact in
 
 1. Create a Resend account, verify a domain you control with the DNS records Resend provides, and create a sending API key. Use a verified sender such as `Somedays in May <notifications@somedaysinmay.com>`. The recipient can be your personal mailbox; it need not match the sending domain.
 2. Ensure the Firebase project has the Blaze billing plan needed to deploy Cloud Functions. Do not enable billing without reviewing it yourself.
-3. Use Node 22 in a supported environment (cloud development or CI works if the old Mac cannot run it). Run `npm ci --prefix functions`.
+3. Use Node 22 in a supported environment (cloud development or CI works if the old Mac cannot run it). Run `npm ci --prefix firebase-functions`.
 4. Set the server secret with `firebase functions:secrets:set RESEND_API_KEY`. Enter the key in that terminal prompt. Never put it in a VITE variable, browser code, or chat.
-5. Set `INQUIRY_NOTIFICATION_EMAIL` and `INQUIRY_FROM_EMAIL` when Firebase prompts at deployment, or in ignored `functions/.env.somedaysinmay`. The notification recipient is configured locally in that ignored file. Keep the Gmail recipient out of browser code; the public contact address remains `inquire@somedaysinmay.com`.
+5. Set `INQUIRY_NOTIFICATION_EMAIL` and `INQUIRY_FROM_EMAIL` when Firebase prompts at deployment, or in ignored `firebase-functions/.env.somedaysinmay`. The notification recipient is configured locally in that ignored file. Keep the Gmail recipient out of browser code; the public contact address remains `inquire@somedaysinmay.com`.
 6. Deploy reviewed changes with `firebase deploy --only firestore:rules,functions:notifyStudio,hosting` after running `npm run build`.
 
 ## Verify live
