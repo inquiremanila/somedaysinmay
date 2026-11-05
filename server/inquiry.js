@@ -1,6 +1,30 @@
 const EMAIL = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
 const MAX_BODY = 16384;
 class InvalidRequest extends Error {}
+class EmailFailure extends Error {
+  constructor(code, message, status) { super(message); this.code = code; this.status = status; }
+}
+function emailFailure(response, result, accepted, recipient) {
+  const status = response.status;
+  const codes = (result.errors || []).map((error) => Number(error.code)).filter(Number.isFinite);
+  // Logs contain diagnostic categories and numeric provider codes, never tokens,
+  // recipients, email bodies, or raw upstream error text.
+  if (status === 401 || status === 403) {
+    console.error('inquiry-email', { category: 'EMAIL_AUTH_FAILED', status, providerCodes: codes });
+    return new EmailFailure('EMAIL_AUTH_FAILED', 'The studio’s email service is temporarily unavailable. Please contact the studio by email.', 503);
+  }
+  if (status === 429) return new EmailFailure('EMAIL_RATE_LIMITED', 'Email delivery is busy. Please wait a few minutes and try again.', 503);
+  if (result.result?.suppressed_recipients?.includes(recipient) || result.result?.permanent_bounces?.includes(recipient)) {
+    console.error('inquiry-email', { category: 'EMAIL_RECIPIENT_REJECTED', status, providerCodes: codes });
+    return new EmailFailure('EMAIL_RECIPIENT_REJECTED', 'The studio’s inbox is temporarily unavailable. Please try again later.', 503);
+  }
+  console.error('inquiry-email', { category: 'EMAIL_SEND_FAILED', status, providerCodes: codes });
+  return new EmailFailure('EMAIL_SEND_FAILED', 'Your request could not be emailed. Please try again shortly.', 502);
+}
+function failureResponse(error) {
+  return json({ error: error instanceof EmailFailure ? error.message : 'Unable to reach the email service. Please try again shortly.',
+    code: error instanceof EmailFailure ? error.code : 'EMAIL_CONNECTION_FAILED' }, error instanceof EmailFailure ? error.status : 502);
+}
 function field(input, key, max, required = true) {
   const value = input[key];
   if (typeof value !== 'string' || value.trim().length > max || (required && !value.trim())) throw new InvalidRequest('Please check your contact details.');
@@ -73,14 +97,15 @@ export function createInquiryHandler({ catalog, fetchImpl = fetch, now = Date.no
     try { input = await readBody(request); payload = inquiryPayload(input, catalog, env); }
     catch (error) { return json({ error: error instanceof InvalidRequest ? error.message : 'Invalid request.' }, 400); }
     if (!/^[a-f0-9]{32}$/i.test(env.CLOUDFLARE_EMAIL_ACCOUNT_ID || '') || !env.CLOUDFLARE_EMAIL_API_TOKEN || !EMAIL.test(env.INQUIRY_NOTIFICATION_EMAIL || '') || !EMAIL.test(env.INQUIRY_FROM_EMAIL || '')) {
-      return json({ error: 'Email requests are temporarily unavailable.' }, 503);
+      console.error('inquiry-email', { category: 'EMAIL_NOT_CONFIGURED' });
+      return json({ error: 'Requests are temporarily unavailable. Please contact the studio by email.', code: 'EMAIL_NOT_CONFIGURED' }, 503);
     }
     const time = now();
     for (const [key, record] of recent) if (time - record.time > 600000) recent.delete(key);
     for (const [key, record] of attempts) if (time - record.time > 600000) attempts.delete(key);
     const signature = JSON.stringify(payload);
     const previous = recent.get(input.requestId);
-    if (previous) return previous.signature === signature ? previous.promise.then(() => json({ sent: true }), () => json({ error: 'Unable to send your request. Please try again.' }, 502)) : json({ error: 'Please start a new request.' }, 409);
+    if (previous) return previous.signature === signature ? previous.promise.then(() => json({ sent: true }), (error) => failureResponse(error)) : json({ error: 'Please start a new request.' }, 409);
     const ip = request.headers.get('CF-Connecting-IP') || 'local';
     const rate = attempts.get(ip) || { time, count: 0 };
     if (rate.count >= 10) return json({ error: 'Please wait before sending another request.' }, 429);
@@ -93,12 +118,12 @@ export function createInquiryHandler({ catalog, fetchImpl = fetch, now = Date.no
         headers: { Authorization: `Bearer ${env.CLOUDFLARE_EMAIL_API_TOKEN}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      const result = await response.json();
+      const result = await response.json().catch(() => ({}));
       const accepted = [...(result.result?.delivered || []), ...(result.result?.queued || [])];
-      if (!response.ok || result.success !== true || !accepted.includes(env.INQUIRY_NOTIFICATION_EMAIL)) throw new Error('Email was not accepted.');
+      if (!response.ok || result.success !== true || !accepted.includes(env.INQUIRY_NOTIFICATION_EMAIL)) throw emailFailure(response, result, accepted, env.INQUIRY_NOTIFICATION_EMAIL);
     })();
     recent.set(input.requestId, { time, signature, promise });
     try { await promise; return json({ sent: true }); }
-    catch { recent.delete(input.requestId); return json({ error: 'Unable to send your request. Please try again.' }, 502); }
+    catch (error) { recent.delete(input.requestId); return failureResponse(error); }
   };
 }

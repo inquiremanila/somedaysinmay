@@ -20,8 +20,8 @@ export default function CommissionRequest({ user }: { user: User }) {
       await sendInquiry({ ...values, kind: 'commission', contactEmail: user.email, requestId: crypto.randomUUID() });
       try { localStorage.setItem(`commission-request-sent-${user.uid}`, 'sent'); } catch { /* Confirmation remains visible. */ }
       setSent(true);
-    } catch {
-      setError('Your commission request could not be sent. Please try again.');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Your commission request could not be sent. Please try again.');
     } finally { setPending(false); }
   }
   if (sent) return <p role="status">{t('Thank you for your interest. One of our team members will contact you shortly.')}</p>;

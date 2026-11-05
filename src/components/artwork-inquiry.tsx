@@ -44,8 +44,8 @@ export default function ArtworkInquiry({ product }: { product: Product }) {
       } catch { /* Keep the confirmation visible if browser storage is unavailable. */ }
       setSent(true);
       setDetails({ firstName: '', lastName: '', address: '', contactEmail: '', website: '' });
-    } catch {
-      setError('Your request could not be sent. Please try again shortly.');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Your request could not be sent. Please try again shortly.');
     } finally {
       setPending(false);
     }

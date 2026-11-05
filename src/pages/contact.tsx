@@ -45,8 +45,8 @@ function Contact() {
       await sendInquiry({ ...values, kind: 'contact', contactEmail: user.email, requestId: crypto.randomUUID() });
       try { sessionStorage.removeItem('somedays-contact-draft'); } catch { /* Saved successfully. */ }
       setSent(true);
-    } catch {
-      setError('Your inquiry could not be sent. Please try again.');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Your inquiry could not be sent. Please try again.');
     }
   }
   return (

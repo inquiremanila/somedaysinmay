@@ -38,3 +38,16 @@ References:
 - https://developers.cloudflare.com/email-service/get-started/send-emails/
 - https://developers.cloudflare.com/email-service/platform/pricing/
 - https://developers.cloudflare.com/pages/functions/bindings/
+
+## Troubleshooting sending
+
+The form preserves safe server errors instead of replacing every failure with a generic message. In the browser Network panel, inspect the `/api/inquiry` response and its `code`. In Pages Functions logs, `inquiry-email` events record categories and numeric provider codes without token values or customer content.
+
+- `EMAIL_NOT_CONFIGURED`: one or more of the four server settings is missing or malformed. Set them in Production and redeploy; local files do not configure the live function.
+- `EMAIL_AUTH_FAILED`: the live token is invalid, revoked, scoped to a different account or missing Email Sending permission.
+- `EMAIL_RECIPIENT_REJECTED`: review the verified destination inbox and its suppression/bounce status.
+- `EMAIL_RATE_LIMITED`: wait before retrying.
+- `EMAIL_SEND_FAILED`: review numeric provider codes and sending-domain onboarding in Cloudflare.
+- `ENDPOINT_MISSING`: redeploy the repository including `functions/`; a static-only upload cannot run the endpoint.
+
+Firebase Auth is explicitly configured with IndexedDB/local persistence. The app has no automatic sign-out timer and waits for stored account restoration before showing sign-in. Sessions stay on the same browser/origin until logout while Firebase credentials remain valid; browser data deletion, private browsing, provider revocation or disabled accounts can still end a session. Localhost and production have separate sessions.

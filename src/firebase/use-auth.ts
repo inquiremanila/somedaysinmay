@@ -4,8 +4,8 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { firebaseAuth } from './firebase';
 
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(Boolean(firebaseAuth));
+  const [user, setUser] = useState<User | null>(() => firebaseAuth?.currentUser ?? null);
+  const [loading, setLoading] = useState(Boolean(firebaseAuth && !firebaseAuth.currentUser));
 
   useEffect(() => {
     if (!firebaseAuth) {

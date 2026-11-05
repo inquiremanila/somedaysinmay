@@ -65,7 +65,7 @@ function Checkout({ cart, clearCart }: CheckoutProps) {
       <span className="eyebrow">{t("A little something, on its way")}</span>
       <h1>{t("Checkout")}</h1>
       <p className="checkout-alert"> {t("Request to purchase the artwork in your bag. The studio will confirm pricing, availability, shipping, and payment details by email.")} </p>
-      {!user && (
+      {!loading && !user && (
         <p className="checkout-alert"> {t("Sign in to save your order request.")}{' '}
           <Link
             href="/account"

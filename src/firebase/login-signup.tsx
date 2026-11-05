@@ -192,6 +192,8 @@ function LoginSignup({ presentation = 'page' }: LoginSignupProps) {
               <CommissionRequest key={user.uid} user={user} />
             </details>
           </>
+        ) : loading ? (
+          <p role="status">{t("Restoring your account…")}</p>
         ) : (
           <>
             <p className="account-auth-intro"> {t("Enter your email and we’ll send you a secure sign-in link. If this is your first visit, your account is created when you confirm the link.")} </p>

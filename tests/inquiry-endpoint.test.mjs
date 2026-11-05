@@ -44,9 +44,13 @@ test('invalid email, unknown artwork, oversized fields, honeypot and cross-origi
 test('missing config, provider failure and suppressed destinations never report success', async () => {
   const handle = createInquiryHandler({ catalog, fetchImpl: async () => Response.json({ success: false }, { status: 403 }) });
   assert.equal((await handle(req(), {})).status, 503);
-  assert.equal((await handle(req(), env)).status, 502);
+  const rejected = await handle(req(), env);
+  assert.equal(rejected.status, 503);
+  assert.equal((await rejected.json()).code, 'EMAIL_AUTH_FAILED');
   const suppressed = createInquiryHandler({ catalog, fetchImpl: async () => Response.json({ success: true, result: { suppressed_recipients: ['owner@example.com'] } }) });
-  assert.equal((await suppressed(req(), env)).status, 502);
+  const bounced = await suppressed(req(), env);
+  assert.equal(bounced.status, 503);
+  assert.equal((await bounced.json()).code, 'EMAIL_RECIPIENT_REJECTED');
 });
 
 test('concurrent retries deduplicate within an isolate and failed sends can retry', async () => {
