@@ -1,6 +1,7 @@
 import { ArtworkPrice, CartPrice } from '../components/artwork-price';
 import { useLocalization } from '../localization/provider';
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
+import { sendInquiry } from '../lib/send-inquiry';
 import { Link } from 'wouter';
 import type { CartLine } from '../types/store';
 import type { ShippingDetails } from '../firebase/store';
@@ -23,6 +24,7 @@ function Checkout({ cart, clearCart }: CheckoutProps) {
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const savedRequest = useRef<{ signature: string; id: string } | null>(null);
   const [shipping, setShipping] = useState<ShippingDetails>({
     name: '',
     address: '',
@@ -40,11 +42,16 @@ function Checkout({ cart, clearCart }: CheckoutProps) {
     setError('');
     try {
       const { createOrderInquiry } = await import('../firebase/store');
-      await createOrderInquiry(user.uid, shipping, cart, message);
+      const signature = JSON.stringify({ uid: user.uid, shipping, cart, message });
+      if (savedRequest.current?.signature !== signature) {
+        const id = await createOrderInquiry(user.uid, shipping, cart, message);
+        savedRequest.current = { signature, id };
+      }
+      await sendInquiry({ kind: 'purchase', contactEmail: shipping.email, shipping, items: cart, message, requestId: savedRequest.current!.id });
       clearCart();
       setSubmitted(true);
     } catch {
-      setError('Your order request could not be saved. Please check your connection and try again.');
+      setError('Your purchase request could not be completed. Please check your connection and try again.');
     } finally {
       setIsSubmitting(false);
     }

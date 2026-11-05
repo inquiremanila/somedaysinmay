@@ -8,13 +8,13 @@ import {
 } from 'firebase/auth';
 import { Mail } from 'lucide-react';
 import { useAuth } from './use-auth';
-import { ensureUserProfile, getUserOrders, getUserInquiries, type OrderRequestSummary } from './store';
+import { ensureUserProfile, getUserOrders, type OrderRequestSummary } from './store';
 import { firebaseAuth, firebaseConfigured } from './firebase';
 import './login-signup.css';
-import { products } from '../data/products';
+import CommissionRequest from '../components/commission-request';
 
 const EMAIL_STORAGE_KEY = 'somedays-firebase-email';
-const RETURN_PATH_KEY = 'somedays-firebase-return-path';
+import { RETURN_PATH_KEY, readReturnStorage, safeReturnPath, signInDestination, writeReturnStorage } from './sign-in-return';
 
 type Notice = { kind: 'success' | 'error' | 'info'; message: string };
 type LoginSignupProps = { presentation?: 'page' | 'overlay' };
@@ -33,7 +33,6 @@ function LoginSignup({ presentation = 'page' }: LoginSignupProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [orders, setOrders] = useState<OrderRequestSummary[]>([]);
-  const [inquiries, setInquiries] = useState<Awaited<ReturnType<typeof getUserInquiries>>>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
 
   async function completeEmailSignIn(address: string) {
@@ -42,18 +41,14 @@ function LoginSignup({ presentation = 'page' }: LoginSignupProps) {
     setIsSubmitting(true);
     try {
       await signInWithEmailLink(firebaseAuth, address, window.location.href);
-      window.localStorage.removeItem(EMAIL_STORAGE_KEY);
-      const returnPath = window.localStorage.getItem(RETURN_PATH_KEY);
-
-      if (returnPath?.startsWith('/') && !returnPath.startsWith('//')) {
+      const params = new URLSearchParams(window.location.search);
+      const returnPath = safeReturnPath(params.get('next'), window.location.origin)
+        ?? signInDestination('/account', window.location.origin);
+      try {
+        window.localStorage.removeItem(EMAIL_STORAGE_KEY);
         window.localStorage.removeItem(RETURN_PATH_KEY);
-        window.location.assign(returnPath);
-        return;
-      }
-
-      window.history.replaceState({}, document.title, '/account');
-      setIsEmailLinkPending(false);
-      setNotice({ kind: 'success', message: 'You are signed in. Welcome to the studio.' });
+      } catch { /* Authentication succeeds even when browser storage is blocked. */ }
+      window.location.replace(returnPath);
     } catch {
       setNotice({
         kind: 'error',
@@ -68,7 +63,7 @@ function LoginSignup({ presentation = 'page' }: LoginSignupProps) {
     if (!firebaseAuth || !isSignInWithEmailLink(firebaseAuth, window.location.href)) return;
 
     setIsEmailLinkPending(true);
-    const savedEmail = window.localStorage.getItem(EMAIL_STORAGE_KEY);
+    const savedEmail = readReturnStorage(EMAIL_STORAGE_KEY);
     if (savedEmail) {
       setEmail(savedEmail);
       void completeEmailSignIn(savedEmail);
@@ -84,16 +79,15 @@ function LoginSignup({ presentation = 'page' }: LoginSignupProps) {
   useEffect(() => {
     if (!user) {
       setOrders([]);
-      setInquiries([]);
       setOrdersLoading(false);
       return;
     }
 
     let cancelled = false;
     setOrdersLoading(true);
-    Promise.all([ensureUserProfile(user.uid, user.email), getUserOrders(user.uid), getUserInquiries(user.uid)])
-      .then(([, recentOrders, recentInquiries]) => {
-        if (!cancelled) { setOrders(recentOrders); setInquiries(recentInquiries); }
+    Promise.all([ensureUserProfile(user.uid, user.email), getUserOrders(user.uid)])
+      .then(([, recentOrders]) => {
+        if (!cancelled) setOrders(recentOrders);
       })
       .catch(() => {
         if (!cancelled) {
@@ -127,11 +121,15 @@ function LoginSignup({ presentation = 'page' }: LoginSignupProps) {
     setIsSubmitting(true);
     setNotice(null);
     try {
+      const destination = signInDestination(window.location.pathname + window.location.search + window.location.hash, window.location.origin);
+      writeReturnStorage(RETURN_PATH_KEY, destination);
+      const callback = new URL('/account', window.location.origin);
+      callback.searchParams.set('next', destination);
       await sendSignInLinkToEmail(firebaseAuth, address, {
-        url: `${window.location.origin}/account`,
+        url: callback.toString(),
         handleCodeInApp: true,
       });
-      window.localStorage.setItem(EMAIL_STORAGE_KEY, address);
+      writeReturnStorage(EMAIL_STORAGE_KEY, address);
       setNotice({
         kind: 'success',
         message: `A secure sign-in link is on its way to ${address}. New accounts are created automatically.`,
@@ -189,17 +187,10 @@ function LoginSignup({ presentation = 'page' }: LoginSignupProps) {
                 <p>{t("Your purchase requests will appear here. Payment details are confirmed by the studio.")}</p>
               )}
             </section>
-            <section className="account-orders" aria-labelledby="account-inquiries-title">
-              <h2 id="account-inquiries-title">{t("Your artwork inquiries")}</h2>
-              {ordersLoading ? <p role="status">{t("Loading inquiries…")}</p> : inquiries.length ? (
-                <ul className="account-inquiry-list">{inquiries.map((inquiry) => (
-                  <li key={inquiry.id}>
-                    <strong>{products.find((product) => product.id === inquiry.productId)?.name || inquiry.productId}</strong>
-                    <p className="request-message">{inquiry.message}</p>
-                  </li>
-                ))}</ul>
-              ) : <p>{t("Your artwork inquiries will appear here.")}</p>}
-            </section>
+            <details className="account-orders commission-request">
+              <summary>{t('Request for commission')}</summary>
+              <CommissionRequest key={user.uid} user={user} />
+            </details>
           </>
         ) : (
           <>

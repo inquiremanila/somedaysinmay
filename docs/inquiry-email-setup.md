@@ -1,24 +1,40 @@
-# Inquiry email setup
+# Cloudflare inquiry emails
 
-Prepared locally; not deployed or live-tested. New artwork inquiries, contact inquiries and purchase requests are saved first, then trigger `notifyStudio`. The Contact form now requires the same email-link sign-in used for artwork inquiries, and keeps its draft in session storage. Its reply email is the signed-in email. Existing messages are not sent retroactively.
+The artwork, commission, contact and checkout forms post to `/api/inquiry`. A Cloudflare Pages Function validates the request and calls Cloudflare Email Service. The receiving inbox and API token remain server-side. Reply-To is the customer's submitted email address, so the studio replies using its normal inbox. There is no website chat or incoming-email synchronization.
 
-## Configure sending
+The form reports success only when Cloudflare reports the fixed recipient as delivered or queued. Queued is not proof of inbox delivery. Suppressed/bounced requests and API failures remain errors. Artwork success markers persist per artwork in the same browser/origin until storage is cleared; commission confirmations persist per account in that browser. These simple inquiries are emailed, not saved as account chat records. Checkout still saves the signed-in user's purchase request in Firestore before emailing it; a failed email leaves the cart and form available for retry.
 
-1. Create a Resend account, verify a domain you control with the DNS records Resend provides, and create a sending API key. Use a verified sender such as `Somedays in May <notifications@somedaysinmay.com>`. The recipient can be your personal mailbox; it need not match the sending domain.
-2. Ensure the Firebase project has the Blaze billing plan needed to deploy Cloud Functions. Do not enable billing without reviewing it yourself.
-3. Use Node 22 in a supported environment (cloud development or CI works if the old Mac cannot run it). Run `npm ci --prefix firebase-functions`.
-4. Set the server secret with `firebase functions:secrets:set RESEND_API_KEY`. Enter the key in that terminal prompt. Never put it in a VITE variable, browser code, or chat.
-5. Set `INQUIRY_NOTIFICATION_EMAIL` and `INQUIRY_FROM_EMAIL` when Firebase prompts at deployment, or in ignored `firebase-functions/.env.somedaysinmay`. The notification recipient is configured locally in that ignored file. Keep the Gmail recipient out of browser code; the public contact address remains `inquire@somedaysinmay.com`.
-6. Deploy reviewed changes with `firebase deploy --only firestore:rules,functions:notifyStudio,hosting` after running `npm run build`.
+## One-time Cloudflare setup
+
+1. In **Email Service → Email Routing → Destination Addresses**, add your receiving inbox and confirm the verification email. Sending to verified destination addresses is free on Workers Free and Paid; normal Pages Functions request limits still apply.
+2. Configure your sending domain in **Email Service → Email Sending → Onboard Domain**. Use the domain you control in Cloudflare DNS and review its required SPF/DKIM/bounce records. Use a plain sender email such as `notifications@somedaysinmay.com` below. Existing mailbox DNS should not be replaced blindly; follow the domain-specific onboarding instructions.
+3. Create a Cloudflare API token scoped to this account with **Email Sending: Edit**. Do not use a Global API key.
+4. In **Workers & Pages → somedaysinmay → Settings → Variables and Secrets**, add these server-side settings to Production (and Preview only if intentionally testing real email there):
+
+   | Setting | Value |
+   | --- | --- |
+   | `CLOUDFLARE_EMAIL_ACCOUNT_ID` | Your Cloudflare account ID, 32 hexadecimal characters |
+   | `CLOUDFLARE_EMAIL_API_TOKEN` | Sending API token; store as a secret |
+   | `INQUIRY_FROM_EMAIL` | Plain sender address on your onboarded domain |
+   | `INQUIRY_NOTIFICATION_EMAIL` | Your verified receiving inbox; store as a secret to keep it private |
+
+   Do not prefix these settings with `VITE_`, put them in `.env.production`, or commit real credentials. No `send_email` binding is needed: Pages Functions use the REST API because Pages does not support all Worker binding types.
+5. Commit and push the project changes to GitHub. Cloudflare's Git build deploys both `dist/public` and the repository's `functions/` endpoint. Keep **Root directory blank**, **Build command `npm run build`**, **Build output `dist/public`**. `public/_routes.json` limits function execution to `/api/*`; artwork pages and other static requests remain static. Redeploy after changing server settings.
+
+No Firebase Cloud Functions, Blaze email backend, Resend account or extra Worker project is required. Firebase still provides existing authentication, account data and purchase records.
+
+## Local preview
+
+Run `npm run dev`, then open `http://localhost:5173`. Vite serves the same request handler locally. Put the four private server settings in ignored `.env.local` and restart Vite to test real email. Existing private sender/recipient settings were preserved there when the old backend was removed. Without complete settings, Send returns an unavailable error and does not falsely show success. Local tests use mocked Cloudflare responses and never send real emails.
 
 ## Verify live
 
-Sign in as a buyer, submit one artwork inquiry and one Contact form inquiry. Confirm records at `users/{uid}/inquiries/{id}` and `users/{uid}/contactInquiries/{id}`, then check the destination inbox. Reply should address the buyer. Confirm delivery ledger `_emailNotifications/{hash}` has `status: sent` and inspect Resend delivery status. `sent` means provider acceptance, not inbox delivery. Purchase requests at `users/{uid}/orders/{id}` also notify the studio.
+Send an artwork request, reload and confirm the thank-you remains. Check the studio inbox for the artwork/name/address/email, then use Reply and confirm the destination is the customer. Test a commission/contact message and a purchase request if checkout is used. Confirm failure leaves the form retryable. Use Cloudflare email activity to investigate queued mail and bounces. Do not put full email contents, customer addresses or API tokens in application logs.
 
-Failures preserve the original inquiry. The server retries failed delivery; inspect Firebase Functions logs and the server-only ledger for failures. Payloads use plain text to avoid rendering user-supplied HTML. The recipient and sender are server configuration, never browser inputs. The delivery ledger suppresses already completed events; Resend idempotency keys suppress concurrent/retried sends for 24 hours. A provider-accepted send followed by a ledger-write failure can still duplicate if retried after that window. Monitor failures promptly. No exactly-once claim is made.
+The endpoint checks origin, JSON/body limits, catalog IDs, field lengths, email headers and a honeypot. A bounded per-isolate throttle and repeat-request cache reduce basic abuse and duplicate clicks; they are best-effort, not durable/global limits or exactly-once delivery. A timeout or worker restart can still produce a duplicate. Enable appropriate Cloudflare edge protections for `/api/inquiry` if traffic requires them. No old inquiries are sent retroactively. Removing local Firebase function code does not delete any previously deployed functions; if they were deployed earlier, disable the old notification triggers before using the new purchase flow to avoid duplicate notifications.
 
-Firestore rules deny clients access to `_emailNotifications` by default and restrict contact inquiries to their signed-in owner. A successful frontend response confirms database save, not email delivery. Existing artwork messages remain viewable in buyer accounts; Contact messages are currently viewable through the Firebase console.
-
-References: https://firebase.google.com/docs/functions/firestore-events and https://resend.com/docs/dashboard/emails/idempotency-keys
-
-Local verification: site production build, TypeScript checks, 15 existing site tests, four mocked email delivery tests and function import check passed. Live Firebase rules/emulator submission and real email delivery are not yet verified. The installed Firebase SDK dependency tree reports eight moderate advisories through older transitive `uuid`; no high/critical findings. An automatic forced fix proposes downgrading Firebase Admin, so that incompatible downgrade was not applied. Review SDK updates before deployment.
+References:
+- https://developers.cloudflare.com/email-service/api/send-emails/rest-api/
+- https://developers.cloudflare.com/email-service/get-started/send-emails/
+- https://developers.cloudflare.com/email-service/platform/pricing/
+- https://developers.cloudflare.com/pages/functions/bindings/

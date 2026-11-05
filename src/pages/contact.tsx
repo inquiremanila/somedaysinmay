@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'wouter';
 import { useAuth } from '../firebase/use-auth';
-import { createContactInquiry } from '../firebase/store';
+import { sendInquiry } from '../lib/send-inquiry';
 import { firebaseConfigured } from '../firebase/firebase';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -42,11 +42,11 @@ function Contact() {
     if (!user?.email) return;
     setError('');
     try {
-      await createContactInquiry(user.uid, { ...values, email: user.email });
+      await sendInquiry({ ...values, kind: 'contact', contactEmail: user.email, requestId: crypto.randomUUID() });
       try { sessionStorage.removeItem('somedays-contact-draft'); } catch { /* Saved successfully. */ }
       setSent(true);
     } catch {
-      setError('Your inquiry could not be saved. Please try again.');
+      setError('Your inquiry could not be sent. Please try again.');
     }
   }
   return (
@@ -87,7 +87,7 @@ function Contact() {
           </FormItem>} />
           {!user && <p><Link href="/account" onClick={() => localStorage.setItem('somedays-firebase-return-path', '/contact')}>{t('Sign in to send your inquiry')}</Link>{t('. Your message will be kept on this browser tab.')}</p>}
           {error && <p role="alert">{t(error)}</p>}
-          {sent ? <p className="studio-contact-status" role="status">{t('Your inquiry has been saved. The studio will reply by email.')}</p>
+          {sent ? <p className="studio-contact-status" role="status">{t('Thank you for your interest. One of our team members will contact you shortly.')}</p>
             : <button className="solid-button" type="submit" disabled={loading || form.formState.isSubmitting || !user?.email || !firebaseConfigured} data-testid="button-send-message">{t(form.formState.isSubmitting ? 'Sending…' : 'Submit')}</button>}
 
         </form>

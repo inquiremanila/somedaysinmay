@@ -1,54 +1,88 @@
 import { useLocalization } from '../localization/provider';
 import { useState, type FormEvent } from 'react';
-import { Link } from 'wouter';
+import { sendInquiry } from '../lib/send-inquiry';
 import type { Product } from '../data/products';
-import { useAuth } from '../firebase/use-auth';
-import { firebaseConfigured } from '../firebase/firebase';
-import { createArtworkInquiry } from '../firebase/store';
+
+export function artworkRequestSent(productId: string) {
+  try { return localStorage.getItem(`artwork-request-sent-${productId}`) === 'sent'; }
+  catch { return false; }
+}
+
+function requestIdFor(productId: string) {
+  const key = `artwork-request-pending-${productId}`;
+  try {
+    const saved = sessionStorage.getItem(key);
+    if (saved) return saved;
+    const id = crypto.randomUUID();
+    sessionStorage.setItem(key, id);
+    return id;
+  } catch { return crypto.randomUUID(); }
+}
 
 export default function ArtworkInquiry({ product }: { product: Product }) {
   const { t } = useLocalization();
-  const { user, loading } = useAuth();
-  const draftKey = `artwork-inquiry-${product.id}`;
-  const [message, setMessage] = useState(() => sessionStorage.getItem(draftKey) || '');
+  const [details, setDetails] = useState({ firstName: '', lastName: '', address: '', contactEmail: '', website: '' });
   const [pending, setPending] = useState(false);
-  const [sent, setSent] = useState(false);
+  const [sent, setSent] = useState(() => artworkRequestSent(product.id));
   const [error, setError] = useState('');
+
+  function updateDetails(field: keyof typeof details, value: string) {
+    setDetails((current) => ({ ...current, [field]: value }));
+    try { sessionStorage.removeItem(`artwork-request-pending-${product.id}`); } catch { /* Optional retry storage. */ }
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!user?.email || !message.trim()) return;
+    if (pending) return;
     setPending(true);
     setError('');
     try {
-      await createArtworkInquiry(user.uid, user.email, product.id, message);
-      sessionStorage.removeItem(draftKey);
+      await sendInquiry({ ...details, kind: 'artwork', productId: product.id, requestId: requestIdFor(product.id) });
+      try {
+        localStorage.setItem(`artwork-request-sent-${product.id}`, 'sent');
+        sessionStorage.removeItem(`artwork-request-pending-${product.id}`);
+      } catch { /* Keep the confirmation visible if browser storage is unavailable. */ }
       setSent(true);
+      setDetails({ firstName: '', lastName: '', address: '', contactEmail: '', website: '' });
     } catch {
-      setError('Your inquiry could not be saved. Please try again.');
+      setError('Your request could not be sent. Please try again shortly.');
     } finally {
       setPending(false);
     }
   }
 
-  if (sent) return <p role="status">{t("Your inquiry about")} {product.name} {t("has been saved.")} <Link href="/account">{t("View your inquiries")}</Link>.</p>;
-
   return (
-    <form className="contact-form artwork-inquiry" onSubmit={submit}>
-      <h2>{t("Inquire about")} {product.name}</h2>
-      <label htmlFor={`inquiry-${product.id}`}>{t("Your message")}</label>
-      <textarea id={`inquiry-${product.id}`} required maxLength={4000} rows={4}
-        placeholder={t("Ask about price, availability, shipping, or the artwork itself.")}
-        value={message} onChange={(event) => {
-          setMessage(event.target.value);
-          sessionStorage.setItem(draftKey, event.target.value);
-        }} />
-      {!user ? <p><Link href="/account" onClick={() => localStorage.setItem('somedays-firebase-return-path', `/product/${product.id}`)}>{t("Sign in to send your inquiry")}</Link>{t(". Your message will be kept on this browser tab.")}</p>
-        : <p>{t("Reply email:")} {user.email}</p>}
-      {error && <p role="alert">{t(error)}</p>}
-      <button className="solid-button" disabled={loading || pending || !user || !firebaseConfigured || !message.trim()}>
-        {pending ? t("Sending…") : t("Send inquiry")}
-      </button>
-    </form>
+    <section className="artwork-request" aria-labelledby={`request-title-${product.id}`}>
+      <h2 id={`request-title-${product.id}`}>{t('Availability & Price Request')}</h2>
+      {sent ? (
+        <p className="artwork-request-thanks" role="status">{t('Thank you for your interest. One of our team members will contact you shortly.')}</p>
+      ) : (
+        <form onSubmit={submit}>
+          <div className="artwork-request-names">
+            <label htmlFor={`first-${product.id}`}>{t('First Name')} <span aria-hidden="true">*</span>
+              <input id={`first-${product.id}`} autoComplete="given-name" required maxLength={120} value={details.firstName}
+                onChange={(event) => updateDetails('firstName', event.target.value)} />
+            </label>
+            <label htmlFor={`last-${product.id}`}>{t('Last Name')} <span aria-hidden="true">*</span>
+              <input id={`last-${product.id}`} autoComplete="family-name" required maxLength={120} value={details.lastName}
+                onChange={(event) => updateDetails('lastName', event.target.value)} />
+            </label>
+          </div>
+          <label htmlFor={`address-${product.id}`}>{t('Address')}
+            <input id={`address-${product.id}`} autoComplete="street-address" maxLength={500} value={details.address}
+              onChange={(event) => updateDetails('address', event.target.value)} />
+          </label>
+          <label htmlFor={`email-${product.id}`}>{t('Email')} <span aria-hidden="true">*</span>
+            <input id={`email-${product.id}`} type="email" autoComplete="email" required maxLength={254} value={details.contactEmail}
+              onChange={(event) => updateDetails('contactEmail', event.target.value)} />
+          </label>
+          <div className="artwork-request-trap" aria-hidden="true">
+            <label>Website<input tabIndex={-1} autoComplete="off" value={details.website} onChange={(event) => updateDetails('website', event.target.value)} /></label>
+          </div>
+          {error && <p role="alert">{t(error)}</p>}
+          <button type="submit" disabled={pending}>{t(pending ? 'Sending…' : 'Send')}</button>
+        </form>
+      )}
+    </section>
   );
 }

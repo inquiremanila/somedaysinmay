@@ -6,6 +6,8 @@ import { Menu, Search, ShoppingBag, UserRound, X } from 'lucide-react';
 import { products } from '../data/products';
 import type { CartLine } from '../types/store';
 import LoginSignup from '../firebase/login-signup';
+import { useAuth } from '../firebase/use-auth';
+import EmptyCart from './empty-cart';
 
 type SiteHeaderProps = {
   cart: CartLine[];
@@ -15,6 +17,7 @@ type SiteHeaderProps = {
 function SiteHeader({ cart, setCart }: SiteHeaderProps) {
   const { t } = useLocalization();
   const [path] = useLocation();
+  const { user, loading: authLoading } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeOverlay, setActiveOverlay] = useState<'search' | 'account' | 'cart' | null>(null);
   const [query, setQuery] = useState('');
@@ -146,12 +149,8 @@ function SiteHeader({ cart, setCart }: SiteHeaderProps) {
               <button className="icon-button" ref={closeRef} type="button" onClick={closeOverlay} aria-label={t("Close cart")} data-testid="button-close-cart"><X size={18} /></button>
             </div>
             {cartCount === 0 ? (
-              <div className="cart-drawer-empty" data-testid="state-empty-cart">
-                <ShoppingBag size={24} strokeWidth={1.2} />
-                <h3>{t("Your cart is empty")}</h3>
-                <p>{t("Have an account?")} <button type="button" onClick={() => setActiveOverlay('account')} data-testid="button-cart-login">{t("Log in")}</button> {t("to check out faster.")}</p>
-                <Link href="/artworks" className="outline-button" onClick={closeOverlay} data-testid="link-continue-shopping">{t("Continue shopping")}</Link>
-              </div>
+              <EmptyCart signedIn={Boolean(user)} email={user?.email ?? null} loading={authLoading}
+                onLogin={() => setActiveOverlay('account')} onContinue={closeOverlay} />
             ) : (
               <div>
                 {cart.map((line) => {

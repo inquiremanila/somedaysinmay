@@ -2,6 +2,8 @@ import path from 'path';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig, loadEnv } from 'vite';
+import { inquiryDevPlugin } from './server/vite-inquiry.js';
+import { products } from './src/data/products';
 
 const rawPort = process.env.PORT ?? '5173';
 const port = Number(rawPort);
@@ -14,6 +16,7 @@ const basePath = process.env.BASE_PATH || '/';
 
 export default defineConfig(({ mode, command }) => {
   const env = { ...loadEnv(mode, process.cwd(), 'VITE_'), ...process.env };
+  const serverEnv = { ...loadEnv(mode, process.cwd(), ''), ...process.env };
   const required = ['VITE_FIREBASE_API_KEY', 'VITE_FIREBASE_AUTH_DOMAIN', 'VITE_FIREBASE_PROJECT_ID', 'VITE_FIREBASE_APP_ID'];
   if (command === 'build' && process.env.CF_PAGES) {
     const missing = required.filter((key) => !env[key]?.trim());
@@ -21,7 +24,7 @@ export default defineConfig(({ mode, command }) => {
   }
   return {
   base: basePath,
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), inquiryDevPlugin(products, serverEnv)],
   resolve: {
     alias: {
       '@': path.resolve(import.meta.dirname, 'src'),

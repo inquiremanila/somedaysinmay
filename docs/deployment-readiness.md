@@ -1,3 +1,5 @@
+> Historical snapshot from 23 October 2026. For the current Cloudflare email implementation and required setup, see [inquiry-email-setup.md](inquiry-email-setup.md). The old Firebase notification backend and Firebase Hosting configuration have been removed.
+
 # Deployment readiness — 23 October 2026
 
 The bio uses its original text heading again. No logo image is referenced there.

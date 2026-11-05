@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { ArtworkPrice } from '../components/artwork-price';
 import { useLocalization } from '../localization/provider';
@@ -11,9 +10,6 @@ type ProductDetailProps = { id: string; addToCart: (product: Product) => void };
 function ProductDetail({ id, addToCart }: ProductDetailProps) {
   const { t } = useLocalization();
   const [, navigate] = useLocation();
-  const [inquiryOpen, setInquiryOpen] = useState(() => {
-    try { return Boolean(sessionStorage.getItem(`artwork-inquiry-${id}`)); } catch { return false; }
-  });
   const product = products.find((item) => item.id === id);
   if (!product) return <NotFoundPage />;
   const canPurchase = product.price !== null && product.availability === 'Available';
@@ -24,13 +20,9 @@ function ProductDetail({ id, addToCart }: ProductDetailProps) {
         <div className="artwork-copy">
           <h1>{product.name}</h1>
           <div className="artwork-price"><ArtworkPrice product={product} /></div>
-          <button type="button" className="solid-button full-button" aria-expanded={!canPurchase ? inquiryOpen : undefined}
-            onClick={() => {
-              if (canPurchase) { addToCart(product); navigate('/checkout'); }
-              else setInquiryOpen(!inquiryOpen);
-            }}>{t(canPurchase ? 'Request to purchase' : 'Request')}</button>
-          {canPurchase && <button type="button" className="artwork-inquire-link" aria-expanded={inquiryOpen} onClick={() => setInquiryOpen(!inquiryOpen)}>{t('Inquire about this piece')}</button>}
-          {inquiryOpen && <ArtworkInquiry key={product.id} product={product} />}
+          {canPurchase && <button type="button" className="solid-button full-button"
+            onClick={() => { addToCart(product); navigate('/checkout'); }}>{t('Request to purchase')}</button>}
+          <ArtworkInquiry key={product.id} product={product} />
           <div className="artwork-details">
             <details open>
               <summary>{t('Description')}</summary>

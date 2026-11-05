@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Route, Switch } from 'wouter';
+import { Route, Switch, useLocation } from 'wouter';
+import { LAST_PAGE_KEY, safeReturnPath, writeReturnStorage } from './firebase/sign-in-return';
 import SiteHeader from './components/site-header';
 import SiteFooter from './components/site-footer';
 import Seo from './components/seo';
@@ -28,6 +29,11 @@ import { products, type Product } from './data/products';
 const CART_STORAGE_KEY = 'somedays-cart';
 
 function App() {
+  const [location] = useLocation();
+  useEffect(() => {
+    const path = safeReturnPath(window.location.pathname + window.location.search + window.location.hash, window.location.origin);
+    if (path) writeReturnStorage(LAST_PAGE_KEY, path);
+  }, [location]);
   const [cart, setCart] = useState<CartLine[]>(() => {
     try {
       const saved = localStorage.getItem(CART_STORAGE_KEY);

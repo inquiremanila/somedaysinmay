@@ -11,7 +11,7 @@ In the Pages project's build settings:
 
 The repository's `wrangler.jsonc` identifies the Pages asset output directory. Commit and push the changes, then deploy the latest commit. Do not publish the repository root or the source `public` folder. The deployed HTML must load `/assets/...js`, never `/src/main.tsx`. Changing a MIME header cannot compile TSX into runnable JavaScript.
 
-The Firebase notification backend lives in `firebase-functions/` so Cloudflare does not mistake it for its reserved `/functions` Pages Functions directory. Cloudflare hosts the frontend only; deploy Firestore rules and Firebase notification functions separately. The email service API key stays in Firebase Secret Manager, not Cloudflare's VITE variables.
+The repository's `functions/api/inquiry.js` deploys with Pages and sends form emails using Cloudflare Email Service. Configure the four server-only settings in [inquiry-email-setup.md](inquiry-email-setup.md). Firebase remains for authentication and account/purchase records; `firebase.json` only configures Firestore rules.
 
 Pages provides SPA fallback automatically when no top-level `404.html` exists. Generated artwork HTML files remain available for direct requests. Add your production hostname (and any preview hostname used for sign-in testing) in Firebase Authentication → Settings → Authorized domains. Confirm the SEO canonical production domain before launch.
 
@@ -27,8 +27,8 @@ In Firebase Console for `somedaysinmay`:
 
 1. Authentication → Sign-in method → Email/Password: enable Email/Password and Email link (passwordless sign-in), then save.
 2. Authentication → Settings → Authorized domains: add `somedaysinmay.com`, `www.somedaysinmay.com` if used, and `somedaysinmay.pages.dev`. Keep the existing Firebase auth domain. Add any specific preview hostname only if testing sign-in there.
-3. Create the default Cloud Firestore database if absent, and publish the repository's `firestore.rules` in the Rules tab. These rules restrict carts, profiles, inquiries and orders to their owner. Deploy notification functions separately if studio email delivery is required (see `inquiry-email-setup.md`).
+3. Create the default Cloud Firestore database if absent, and publish the repository's `firestore.rules` in the Rules tab. These rules restrict carts, profiles, inquiries and orders to their owner. Configure the Cloudflare email endpoint for studio email delivery (see `inquiry-email-setup.md`).
 4. After deploying, add an available artwork to the cart and reload: it should remain. Sign in from checkout using the emailed link in the same browser. The account should be created on first sign-in and checkout should reopen with the cart intact. For a link opened in a different browser, confirm the same email address; the original browser's cart is local and does not transfer.
-5. Submit a test purchase request. Confirm it appears under Account and in `users/{uid}/orders` in Firestore, and that the cart clears only after a successful write. Sign out and confirm private account data is hidden. Checkout records a request; it does not charge a card or reserve inventory.
+5. Submit a test purchase request. Confirm it appears under Account and in `users/{uid}/orders` in Firestore, that the studio receives the email, and that the cart clears only after the email endpoint succeeds. Sign out and confirm private account data is hidden. Checkout records a request; it does not charge a card or reserve inventory.
 
 Dashboard settings and authenticated email/Firestore flows cannot be verified by a local build alone. An account holder must complete the live checks above.
