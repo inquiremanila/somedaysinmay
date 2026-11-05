@@ -75,6 +75,7 @@ function Checkout({ cart, clearCart }: CheckoutProps) {
             <label> {t("Full name")} <input
                 autoComplete="name"
                 required
+                maxLength={120}
                 value={shipping.name}
                 onChange={(event) => setShipping({ ...shipping, name: event.target.value })}
               />
@@ -82,6 +83,7 @@ function Checkout({ cart, clearCart }: CheckoutProps) {
             <label> {t("Address")} <input
                 autoComplete="street-address"
                 required
+                maxLength={300}
                 value={shipping.address}
                 onChange={(event) => setShipping({ ...shipping, address: event.target.value })}
               />
@@ -90,14 +92,16 @@ function Checkout({ cart, clearCart }: CheckoutProps) {
               <label> {t("City")} <input
                   autoComplete="address-level2"
                   required
-                  value={shipping.city}
+                  maxLength={120}
+                value={shipping.city}
                   onChange={(event) => setShipping({ ...shipping, city: event.target.value })}
                 />
               </label>
               <label> {t("Postcode")} <input
                   autoComplete="postal-code"
                   required
-                  value={shipping.postcode}
+                  maxLength={32}
+                value={shipping.postcode}
                   onChange={(event) => setShipping({ ...shipping, postcode: event.target.value })}
                 />
               </label>
@@ -106,6 +110,7 @@ function Checkout({ cart, clearCart }: CheckoutProps) {
                 type="email"
                 autoComplete="email"
                 required
+                maxLength={254}
                 value={shipping.email}
                 onChange={(event) => setShipping({ ...shipping, email: event.target.value })}
               />
@@ -113,6 +118,7 @@ function Checkout({ cart, clearCart }: CheckoutProps) {
             <label> {t("Phone number")} <input
                 type="tel"
                 autoComplete="tel"
+                maxLength={40}
                 value={shipping.phone}
                 onChange={(event) => setShipping({ ...shipping, phone: event.target.value })}
               />

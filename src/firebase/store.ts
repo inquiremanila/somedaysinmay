@@ -110,6 +110,11 @@ export async function createOrderInquiry(
 
   if (message.trim().length > 4000) throw new Error('The message is too long.');
   if (cart.some((line) => !products.some((product) => product.id === line.id && product.availability === 'Available'))) throw new Error('An item is unavailable.');
+  const requiredShipping = [['name', 120], ['address', 300], ['city', 120], ['postcode', 32]] as const;
+  if (requiredShipping.some(([field, max]) => !shipping[field].trim() || shipping[field].trim().length > max)
+    || !shipping.email.trim() || shipping.email.trim().length > 254 || shipping.phone.trim().length > 40) {
+    throw new Error('Please provide valid shipping and contact details.');
+  }
   const db = requireFirestore();
   const order = await addDoc(collection(db, 'users', uid, 'orders'), {
     intent: 'purchase',

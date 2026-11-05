@@ -99,7 +99,7 @@ function LoginSignup({ presentation = 'page' }: LoginSignupProps) {
         if (!cancelled) {
           setNotice({
             kind: 'error',
-            message: 'You are signed in, but your account data could not be loaded. Check the Firestore rules.',
+            message: 'You are signed in, but your account data could not be loaded. Please try again shortly.',
           });
         }
       })
@@ -139,7 +139,7 @@ function LoginSignup({ presentation = 'page' }: LoginSignupProps) {
     } catch {
       setNotice({
         kind: 'error',
-        message: 'We could not send a sign-in link. Check that email-link sign-in is enabled in Firebase and try again.',
+        message: 'We could not send a sign-in link. Please try again shortly or contact the studio.',
       });
     } finally {
       setIsSubmitting(false);
@@ -233,8 +233,7 @@ function LoginSignup({ presentation = 'page' }: LoginSignupProps) {
             </form>
 
             {!firebaseConfigured && (
-              <p className="auth-setup-note"> {t("Firebase is not connected yet. Add")} <code>{t("VITE_FIREBASE_API_KEY")}</code>,{' '}
-                <code>{t("VITE_FIREBASE_AUTH_DOMAIN")}</code>{t(", and")} <code>{t("VITE_FIREBASE_APP_ID")}</code> {t("to the environment, then enable email-link sign-in and publish the Firestore rules.")} </p>
+              <p className="auth-setup-note" role="status">{t("Sign-in is temporarily unavailable. Please try again later or contact the studio.")}</p>
             )}
           </>
         )}

@@ -5,3 +5,6 @@ dist/
 .env.*
 !.env.example
 *.tsbuildinfo
+
+# Firebase web configuration is public and required by Cloudflare builds.
+!.env.production

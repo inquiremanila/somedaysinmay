@@ -41,7 +41,11 @@ function App() {
   const [favourites, setFavourites] = useState<string[]>([]);
 
   useEffect(() => {
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+    try {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+    } catch {
+      // Keep the in-memory bag usable when browser storage is unavailable.
+    }
   }, [cart]);
 
   function addToCart(product: Product) {
@@ -49,8 +53,8 @@ function App() {
     setCart((current) => {
       const existing = current.find((line) => line.id === product.id);
       return existing
-        ? current.map((line) => line.id === product.id ? { ...line, quantity: line.quantity + 1 } : line)
-        : [...current, { id: product.id, quantity: 1 }];
+        ? current.map((line) => line.id === product.id ? { ...line, quantity: Math.min(99, line.quantity + 1) } : line)
+        : current.length < 50 ? [...current, { id: product.id, quantity: 1 }] : current;
     });
   }
 
