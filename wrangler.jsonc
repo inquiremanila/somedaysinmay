@@ -1,5 +1,11 @@
 {
   "name": "somedaysinmay",
   "pages_build_output_dir": "./dist/public",
-  "compatibility_date": "2026-11-05"
+  "compatibility_date": "2026-11-05",
+  "services": [
+    {
+      "binding": "INQUIRY_MAILER",
+      "service": "somedaysinmay-inquiries"
+    }
+  ]
 }

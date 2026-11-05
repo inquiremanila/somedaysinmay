@@ -11,7 +11,7 @@ In the Pages project's build settings:
 
 The repository's `wrangler.jsonc` identifies the Pages asset output directory. Commit and push the changes, then deploy the latest commit. Do not publish the repository root or the source `public` folder. The deployed HTML must load `/assets/...js`, never `/src/main.tsx`. Changing a MIME header cannot compile TSX into runnable JavaScript.
 
-The repository's `functions/api/inquiry.js` deploys with Pages and sends form emails using Cloudflare Email Service. Configure the four server-only settings in [inquiry-email-setup.md](inquiry-email-setup.md). Firebase remains for authentication and account/purchase records; `firebase.json` only configures Firestore rules.
+The repository's `functions/api/inquiry.js` deploys with Pages and calls the private `somedaysinmay-inquiries` Worker through `INQUIRY_MAILER`. Deploy that Worker with its native Email Routing binding and two address settings first, following the setup in [inquiry-email-setup.md](inquiry-email-setup.md). Firebase remains for authentication and account/purchase records; `firebase.json` only configures Firestore rules.
 
 Pages provides SPA fallback automatically when no top-level `404.html` exists. Generated artwork HTML files remain available for direct requests. Add your production hostname (and any preview hostname used for sign-in testing) in Firebase Authentication → Settings → Authorized domains. Confirm the SEO canonical production domain before launch.
 

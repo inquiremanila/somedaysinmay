@@ -1,53 +1,59 @@
-# Cloudflare inquiry emails
+# Free Email Routing notifications
 
-The artwork, commission, contact and checkout forms post to `/api/inquiry`. A Cloudflare Pages Function validates the request and calls Cloudflare Email Service. The receiving inbox and API token remain server-side. Reply-To is the customer's submitted email address, so the studio replies using its normal inbox. There is no website chat or incoming-email synchronization.
+The form posts to the site's `/api/inquiry` Pages Function, which calls the private `somedaysinmay-inquiries` Worker through a service binding. The Worker uses Cloudflare's `send_email` binding to notify the studio's verified Email Routing destination. It does not call the Email Sending REST API. No Email Sending API token, Firebase Functions or Resend account is required.
 
-The form reports success only when Cloudflare reports the fixed recipient as delivered or queued. Queued is not proof of inbox delivery. Suppressed/bounced requests and API failures remain errors. Artwork success markers persist per artwork in the same browser/origin until storage is cleared; commission confirmations persist per account in that browser. These simple inquiries are emailed, not saved as account chat records. Checkout still saves the signed-in user's purchase request in Firestore before emailing it; a failed email leaves the cart and form available for retry.
+Only the studio's verified destination receives these notifications. The customer's email is placed in Reply-To, so the studio replies normally from its inbox. There is no chat or customer-email automation. Sending to verified Email Routing destinations is free; the Worker and Pages requests remain subject to their Free plan limits.
 
-## One-time Cloudflare setup
+## 1. Email Routing
 
-1. In **Email Service → Email Routing → Destination Addresses**, add your receiving inbox and confirm the verification email. Sending to verified destination addresses is free on Workers Free and Paid; normal Pages Functions request limits still apply.
-2. Configure your sending domain in **Email Service → Email Sending → Onboard Domain**. Use the domain you control in Cloudflare DNS and review its required SPF/DKIM/bounce records. Use a plain sender email such as `notifications@somedaysinmay.com` below. Existing mailbox DNS should not be replaced blindly; follow the domain-specific onboarding instructions.
-3. Create a Cloudflare API token scoped to this account with **Email Sending: Edit**. Do not use a Global API key.
-4. In **Workers & Pages → somedaysinmay → Settings → Variables and Secrets**, add these server-side settings to Production (and Preview only if intentionally testing real email there):
+Enable Email Routing for `somedaysinmay.com` and verify the actual receiving inbox under Destination Addresses. Use a sender on that Email Routing domain, such as `inquire@somedaysinmay.com`. The `INQUIRY_NOTIFICATION_EMAIL` value below must be the verified destination inbox rather than an unverified forwarding alias. Keep the domain's routing DNS records in place.
 
-   | Setting | Value |
-   | --- | --- |
-   | `CLOUDFLARE_EMAIL_ACCOUNT_ID` | Your Cloudflare account ID, 32 hexadecimal characters |
-   | `CLOUDFLARE_EMAIL_API_TOKEN` | Sending API token; store as a secret |
-   | `INQUIRY_FROM_EMAIL` | Plain sender address on your onboarded domain |
-   | `INQUIRY_NOTIFICATION_EMAIL` | Your verified receiving inbox; store as a secret to keep it private |
+## 2. Deploy the email Worker
 
-   Do not prefix these settings with `VITE_`, put them in `.env.production`, or commit real credentials. No `send_email` binding is needed: Pages Functions use the REST API because Pages does not support all Worker binding types.
-5. Commit and push the project changes to GitHub. Cloudflare's Git build deploys both `dist/public` and the repository's `functions/` endpoint. Keep **Root directory blank**, **Build command `npm run build`**, **Build output `dist/public`**. `public/_routes.json` limits function execution to `/api/*`; artwork pages and other static requests remain static. Redeploy after changing server settings.
+The Worker config is `cloudflare/email-worker/wrangler.jsonc`. It declares the `EMAIL` send_email binding. Workers.dev and public preview URLs are disabled; Pages accesses the Worker privately.
 
-No Firebase Cloud Functions, Blaze email backend, Resend account or extra Worker project is required. Firebase still provides existing authentication, account data and purchase records.
+From a supported cloud terminal or CI environment with current Node and Wrangler:
 
-## Local preview
+```sh
+npm ci
+npx wrangler login
+npx wrangler deploy --config cloudflare/email-worker/wrangler.jsonc
+npx wrangler secret put INQUIRY_FROM_EMAIL --config cloudflare/email-worker/wrangler.jsonc
+npx wrangler secret put INQUIRY_NOTIFICATION_EMAIL --config cloudflare/email-worker/wrangler.jsonc
+```
 
-Run `npm run dev`, then open `http://localhost:5173`. Vite serves the same request handler locally. Put the four private server settings in ignored `.env.local` and restart Vite to test real email. Existing private sender/recipient settings were preserved there when the old backend was removed. Without complete settings, Send returns an unavailable error and does not falsely show success. Local tests use mocked Cloudflare responses and never send real emails.
+Enter the plain sender address and verified recipient inbox at the respective secret prompts. Do not paste credentials in chat or commit the receiving address. These two settings belong to the email Worker, not the Pages project. The old Mac can keep Node 18; use cloud development/CI for Wrangler.
 
-## Verify live
+Alternatively, use a separate **Workers** Git project connected to this repository, with repository root as its root and deploy command `npx wrangler deploy --config cloudflare/email-worker/wrangler.jsonc`. Set a supported Node version in that build environment. Add the two secrets to **somedaysinmay-inquiries → Settings → Variables and Secrets**, then redeploy it. Do not convert the existing Pages website into a Worker project.
 
-Send an artwork request, reload and confirm the thank-you remains. Check the studio inbox for the artwork/name/address/email, then use Reply and confirm the destination is the customer. Test a commission/contact message and a purchase request if checkout is used. Confirm failure leaves the form retryable. Use Cloudflare email activity to investigate queued mail and bounces. Do not put full email contents, customer addresses or API tokens in application logs.
+`npm run build:email-worker` can also produce `dist/email-worker/index.js` for inspection or the Worker editor. Pasting code alone does not configure the `EMAIL` binding; deployment must use the included Wrangler config (or equivalent binding configuration).
 
-The endpoint checks origin, JSON/body limits, catalog IDs, field lengths, email headers and a honeypot. A bounded per-isolate throttle and repeat-request cache reduce basic abuse and duplicate clicks; they are best-effort, not durable/global limits or exactly-once delivery. A timeout or worker restart can still produce a duplicate. Enable appropriate Cloudflare edge protections for `/api/inquiry` if traffic requires them. No old inquiries are sent retroactively. Removing local Firebase function code does not delete any previously deployed functions; if they were deployed earlier, disable the old notification triggers before using the new purchase flow to avoid duplicate notifications.
+## 3. Deploy Pages after the Worker exists
+
+The root `wrangler.jsonc` declares the `INQUIRY_MAILER` service binding to `somedaysinmay-inquiries`. Commit/push the updates and deploy the latest Pages commit after the email Worker exists. If a Pages deployment starts before the Worker has been created, retry it after Worker deployment. Keep root directory empty, build command `npm run build`, output `dist/public`.
+
+Remove obsolete `CLOUDFLARE_EMAIL_API_TOKEN` and `CLOUDFLARE_EMAIL_ACCOUNT_ID` from Pages settings; revoke the unused sending token. The Worker uses Cloudflare's native binding, not those credentials. Firebase web configuration remains unchanged for login/account data.
+
+## Behavior and verification
+
+The Worker validates catalog artwork IDs, contact details, body size, request origin and a honeypot. The fixed recipient is server configuration, not a browser input. It sends plain-text MIME with customer Reply-To and Unicode-safe content. Bounded per-isolate throttling and repeat-request caching reduce basic abuse/duplicates, but are not global rate limits or exactly-once delivery. A timeout/restart can still duplicate a notification.
+
+Success is shown only after the email binding accepts the message, which is not proof of inbox delivery. On failure, the form remains retryable. Artwork success markers persist per artwork in the same browser/origin, and commission success markers persist per account in that browser. The site does not save these inquiries as account chats. Checkout still saves a purchase request in Firestore before emailing it; a failed email leaves the cart and form available for retry.
+
+Test the deployed artwork form, check the receiving inbox and Reply address, then reload and verify the thank-you remains. Also test commissions/contact and checkout if used. Check email activity and Worker logs if delivery fails. Logs record safe diagnostic categories, not tokens/customer content. Previously deployed Firebase notification functions must be disabled if present to avoid duplicate old purchase notifications; removing local code does not delete remote functions.
+
+`npm run dev` previews the forms on the old Mac. It cannot supply a native Cloudflare email binding, so local sends return `EMAIL_NOT_CONFIGURED` rather than pretending to succeed. Test actual sending on the deployed site, or use Wrangler in a supported development environment with the appropriate remote email binding. Automated tests mock the binding and never send mail.
+
+## Troubleshooting
+
+- `EMAIL_NOT_CONFIGURED`: create/deploy the email Worker, check Pages service binding `INQUIRY_MAILER`, the Worker's `EMAIL` binding and its two private address settings.
+- `EMAIL_BINDING_FAILED`: confirm Email Routing is enabled on the sender domain, the receiving inbox is verified, and check Cloudflare email activity/Worker logs.
+- `EMAIL_CONNECTION_FAILED`: check whether the target Worker exists and is accessible through its service binding.
+- `ENDPOINT_MISSING`: deploy the repository including `functions/`; static-only uploads do not run this bridge.
+
+Firebase Auth uses persistent IndexedDB/local storage, with no application sign-out timer. Browser data deletion, private browsing or credential revocation can still end a session; localhost and production have separate sessions.
 
 References:
-- https://developers.cloudflare.com/email-service/api/send-emails/rest-api/
-- https://developers.cloudflare.com/email-service/get-started/send-emails/
+- https://developers.cloudflare.com/workers/wrangler/configuration/#email-bindings
 - https://developers.cloudflare.com/email-service/platform/pricing/
-- https://developers.cloudflare.com/pages/functions/bindings/
-
-## Troubleshooting sending
-
-The form preserves safe server errors instead of replacing every failure with a generic message. In the browser Network panel, inspect the `/api/inquiry` response and its `code`. In Pages Functions logs, `inquiry-email` events record categories and numeric provider codes without token values or customer content.
-
-- `EMAIL_NOT_CONFIGURED`: one or more of the four server settings is missing or malformed. Set them in Production and redeploy; local files do not configure the live function.
-- `EMAIL_AUTH_FAILED`: the live token is invalid, revoked, scoped to a different account or missing Email Sending permission.
-- `EMAIL_RECIPIENT_REJECTED`: review the verified destination inbox and its suppression/bounce status.
-- `EMAIL_RATE_LIMITED`: wait before retrying.
-- `EMAIL_SEND_FAILED`: review numeric provider codes and sending-domain onboarding in Cloudflare.
-- `ENDPOINT_MISSING`: redeploy the repository including `functions/`; a static-only upload cannot run the endpoint.
-
-Firebase Auth is explicitly configured with IndexedDB/local persistence. The app has no automatic sign-out timer and waits for stored account restoration before showing sign-in. Sessions stay on the same browser/origin until logout while Firebase credentials remain valid; browser data deletion, private browsing, provider revocation or disabled accounts can still end a session. Localhost and production have separate sessions.
+- https://developers.cloudflare.com/pages/functions/bindings/#service-bindings

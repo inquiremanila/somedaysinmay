@@ -1,0 +1,8 @@
+{
+  "name": "somedaysinmay-inquiries",
+  "main": "./index.js",
+  "compatibility_date": "2026-11-05",
+  "workers_dev": false,
+  "preview_urls": false,
+  "send_email": [{ "name": "EMAIL" }]
+}
