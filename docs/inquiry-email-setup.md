@@ -1,6 +1,6 @@
 # Free Email Routing notifications
 
-The form posts to the site's `/api/inquiry` Pages Function, which calls the private `somedaysinmay-inquiries` Worker through a service binding. The Worker uses Cloudflare's `send_email` binding to notify the studio's verified Email Routing destination. It does not call the Email Sending REST API. No Email Sending API token, Firebase Functions or Resend account is required.
+The form posts to the site's `/api/inquiry` Pages Function, which calls the private `somedays-email` Worker through a service binding. The Worker uses Cloudflare's `send_email` binding to notify the studio's verified Email Routing destination. It does not call the Email Sending REST API. No Email Sending API token, Firebase Functions or Resend account is required.
 
 Only the studio's verified destination receives these notifications. The customer's email is placed in Reply-To, so the studio replies normally from its inbox. There is no chat or customer-email automation. Sending to verified Email Routing destinations is free; the Worker and Pages requests remain subject to their Free plan limits.
 
@@ -24,13 +24,13 @@ npx wrangler secret put INQUIRY_NOTIFICATION_EMAIL --config cloudflare/email-wor
 
 Enter the plain sender address and verified recipient inbox at the respective secret prompts. Do not paste credentials in chat or commit the receiving address. These two settings belong to the email Worker, not the Pages project. The old Mac can keep Node 18; use cloud development/CI for Wrangler.
 
-Alternatively, use a separate **Workers** Git project connected to this repository, with repository root as its root and deploy command `npx wrangler deploy --config cloudflare/email-worker/wrangler.jsonc`. Set a supported Node version in that build environment. Add the two secrets to **somedaysinmay-inquiries → Settings → Variables and Secrets**, then redeploy it. Do not convert the existing Pages website into a Worker project.
+Alternatively, use a separate **Workers** Git project connected to this repository, with repository root as its root and deploy command `npx wrangler deploy --config cloudflare/email-worker/wrangler.jsonc`. Set a supported Node version in that build environment. Add the two secrets to **somedays-email → Settings → Variables and Secrets**, then redeploy it. Do not convert the existing Pages website into a Worker project.
 
 `npm run build:email-worker` can also produce `dist/email-worker/index.js` for inspection or the Worker editor. Pasting code alone does not configure the `EMAIL` binding; deployment must use the included Wrangler config (or equivalent binding configuration).
 
 ## 3. Deploy Pages after the Worker exists
 
-The root `wrangler.jsonc` declares the `INQUIRY_MAILER` service binding to `somedaysinmay-inquiries`. Commit/push the updates and deploy the latest Pages commit after the email Worker exists. If a Pages deployment starts before the Worker has been created, retry it after Worker deployment. Keep root directory empty, build command `npm run build`, output `dist/public`.
+The root `wrangler.jsonc` declares the `INQUIRY_MAILER` service binding to `somedays-email`. Commit/push the updates and deploy the latest Pages commit after the email Worker exists. If a Pages deployment starts before the Worker has been created, retry it after Worker deployment. Keep root directory empty, build command `npm run build`, output `dist/public`.
 
 Remove obsolete `CLOUDFLARE_EMAIL_API_TOKEN` and `CLOUDFLARE_EMAIL_ACCOUNT_ID` from Pages settings; revoke the unused sending token. The Worker uses Cloudflare's native binding, not those credentials. Firebase web configuration remains unchanged for login/account data.
 

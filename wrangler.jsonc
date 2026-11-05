@@ -5,7 +5,7 @@
   "services": [
     {
       "binding": "INQUIRY_MAILER",
-      "service": "somedaysinmay-inquiries"
+      "service": "somedays-email"
     }
   ]
 }
